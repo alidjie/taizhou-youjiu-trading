@@ -198,8 +198,6 @@ export default function AdminDashboard() {
   const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const [showNewContent, setShowNewContent] = useState(false);
-  const [newContent, setNewContent] = useState({ key: "", page: "home", label: "" });
 
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -515,40 +513,6 @@ export default function AdminDashboard() {
     }
   }
 
-  async function createContentBlock(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const key = newContent.key.trim().toLowerCase().replace(/[^a-z0-9.-]/g, "-");
-    if (!key || !newContent.label.trim()) {
-      setError("请填写内容模块 Key 和名称。");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      const response = await fetch(`${apiUrl}/rest/v1/site_content`, {
-        method: "POST",
-        headers: { ...jsonHeaders(accessToken), Prefer: "return=representation" },
-        body: JSON.stringify({
-          key,
-          page: newContent.page,
-          label: newContent.label.trim(),
-          content: { eyebrow: "", headline: "", body: "" },
-          published: false,
-          sort_order: 100
-        })
-      });
-      if (!response.ok) throw new Error(await response.text() || "创建内容模块失败。");
-      setShowNewContent(false);
-      setNewContent({ key: "", page: "home", label: "" });
-      await loadAll(accessToken);
-      setNotice("新的营销内容模块已创建，默认未发布。");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "创建内容模块失败。");
-    } finally {
-      setLoading(false);
-    }
-  }
-
   const productCount = products.length;
   const publishedCount = products.filter(product => product.published).length;
   const newInquiryCount = inquiries.filter(inquiry => inquiry.status === "new").length;
@@ -638,8 +602,8 @@ export default function AdminDashboard() {
       </div>}
 
       {tab === "content" && <div className="grid xl:grid-cols-[360px_minmax(0,1fr)] gap-6 items-start">
-        <section className="bg-white border border-slate-200"><div className="p-5 border-b border-slate-200 flex justify-between items-center gap-3"><div><h2 className="font-black text-lg">页面内容模块</h2><p className="text-xs text-slate-500 mt-1">选择需要调整的区域</p></div><button onClick={()=>setShowNewContent(value=>!value)} className="bg-[#101923] text-white text-xs px-3 py-3 font-bold">＋ 新模块</button></div>
-          {showNewContent&&<form onSubmit={createContentBlock} className="p-4 bg-slate-50 border-b border-slate-200 space-y-3"><label className="block text-xs font-bold">模块 Key<input value={newContent.key} onChange={event=>setNewContent(current=>({...current,key:event.target.value}))} placeholder="home.new-section" className="w-full border border-slate-300 px-3 py-2 mt-1 text-sm font-normal"/></label><label className="block text-xs font-bold">显示名称<input value={newContent.label} onChange={event=>setNewContent(current=>({...current,label:event.target.value}))} placeholder="首页新模块" className="w-full border border-slate-300 px-3 py-2 mt-1 text-sm font-normal"/></label><label className="block text-xs font-bold">所属页面<select value={newContent.page} onChange={event=>setNewContent(current=>({...current,page:event.target.value}))} className="w-full border border-slate-300 px-3 py-2 mt-1 text-sm font-normal bg-white"><option value="home">首页</option><option value="about">About</option><option value="products">产品中心</option></select></label><div className="flex gap-2"><button className="bg-[#101923] text-white px-3 py-2 text-xs font-bold">创建模块</button><button type="button" onClick={()=>setShowNewContent(false)} className="border border-slate-300 px-3 py-2 text-xs">取消</button></div></form>}
+        <section className="bg-white border border-slate-200"><div className="p-5 border-b border-slate-200"><h2 className="font-black text-lg">页面内容模块</h2><p className="text-xs text-slate-500 mt-1">选择当前网站页面已绑定的文案区域</p></div>
+          
           <div className="divide-y divide-slate-100">{contentBlocks.map(block=><button key={block.key} onClick={()=>editContent(block)} className={`w-full text-left p-4 hover:bg-slate-50 ${contentDraft?.key===block.key?"bg-[#f4f7e9]":""}`}><div className="font-bold text-sm">{block.label}</div><div className="text-[10px] text-slate-400 mt-1">{block.page} / {block.key}</div><div className="mt-2 text-[10px]">{block.published?<span className="text-emerald-700">网站展示中</span>:<span className="text-slate-400">未发布</span>}</div></button>)}{!contentBlocks.length&&<div className="p-8 text-sm text-slate-500">暂时没有文案模块。</div>}</div>
         </section>
         <section className="bg-white border border-slate-200">
