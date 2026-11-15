@@ -128,7 +128,7 @@ export default function AdminDashboard() {
                   <td className="p-4 text-xs">{item.product_name||item.product_category||"General enquiry"}</td>
                   <td className="p-4 text-xs">{item.quantity||"—"}</td>
                   <td className="p-4 text-xs max-w-xs whitespace-pre-wrap">{item.message}</td>
-                  <td className="p-4"><select aria-label="Enquiry status" value={item.status||"new"} onChange={e=>void updateStatus(item.id,e.target.value)} className="border border-slate-300 px-2 py-2 text-xs bg-white"><option value="new">New</option><option value="contacted">Contacted</option><option value="quoted">Quoted</option><option value="closed">Closed</option><option value="spam">Spam</option></select></td>
+                  <td className="p-4"><select aria-label="Enquiry status" value={item.status||"new"} onChange={e=>void updateStatus(item.id,e.target.value)} className="border border-slate-300 px-2 py-2 text-xs bg-white"><option value="new">New</option><option value="contacted">Contacted</option><option value="qualified">Qualified</option><option value="closed">Closed</option></select></td>
                   <td className="p-4 text-xs text-slate-500 whitespace-nowrap">{new Date(item.created_at).toLocaleString()}</td>
                 </tr>)}</tbody>
               </table>
