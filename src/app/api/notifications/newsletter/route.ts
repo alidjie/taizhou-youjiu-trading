@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     if (targetCustomers === 'vip') {
       targetCustomerList = subscribedCustomers.filter((customer) => customer.customerType === 'vip');
     } else if (targetCustomers === 'wholesale') {
-      targetCustomerList = subscribedCustomers.filter((customer: any) => customer.customerType === 'wholesale');
+      targetCustomerList = subscribedCustomers.filter((customer) => customer.customerType === 'wholesale');
     }
 
     // 发送邮件给每个订阅客户
