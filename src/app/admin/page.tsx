@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 type Inquiry = {
   id: string;
@@ -95,7 +96,7 @@ export default function AdminDashboard() {
     <main className="min-h-screen bg-[#f3f5f5] text-[#101923]">
       <header className="bg-[#101923] text-white px-6 py-5">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <a href="/" className="font-black tracking-[.18em] text-xl">YOUJIU <span className="text-[#b8ed36]">/</span> ADMIN</a>
+          <Link href="/" className="font-black tracking-[.18em] text-xl">YOUJIU <span className="text-[#b8ed36]">/</span> ADMIN</Link>
           {accessToken && <button onClick={() => { setAccessToken(""); setInquiries([]); setNotice(""); }} className="text-xs text-slate-300 hover:text-white">Sign out</button>}
         </div>
       </header>
