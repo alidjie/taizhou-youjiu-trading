@@ -67,7 +67,7 @@ export default function AdminDashboard() {
       if (!response.ok || !result.access_token) throw new Error(result.msg || result.message || "Sign-in failed. Check your email and password.");
       setAccessToken(result.access_token);
       setPassword("");
-      await loadInquiries(result.access_token);
+
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Sign-in failed.");
     } finally {
