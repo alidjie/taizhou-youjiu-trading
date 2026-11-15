@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+type NewsletterProduct = {
+  name?: string;
+  description?: string;
+  price?: { min?: number | string; max?: number | string };
+};
+
 // POST /api/notifications/email - 发送邮件通知
 export async function POST(request: NextRequest) {
   try {
@@ -96,7 +102,7 @@ export async function POST(request: NextRequest) {
           <p>Here are the latest updates from Taizhou Youjiu Trading:</p>
           <div style="border: 1px solid #ddd; padding: 20px; margin: 20px 0;">
             <h3>Product Updates</h3>
-            ${data.products ? data.products.map((product: any) => `
+            ${data.products ? data.products.map((product: NewsletterProduct) => `
               <div style="margin-bottom: 15px;">
                 <h4>${product.name}</h4>
                 <p>${product.description}</p>
