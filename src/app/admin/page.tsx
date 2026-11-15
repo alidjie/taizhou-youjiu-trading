@@ -17,8 +17,8 @@ type Inquiry = {
   created_at: string;
 };
 
-const apiUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+const apiUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://fsqpeuulaglnnwfyxndj.supabase.co";
+const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_27Jb43sOATe3CJlIEP-zVQ_-QFD6HOB";
 
 export default function AdminDashboard() {
   const [email, setEmail] = useState("");
@@ -29,10 +29,6 @@ export default function AdminDashboard() {
   const [notice, setNotice] = useState("");
 
   async function loadInquiries(token: string) {
-    if (!apiUrl || !publishableKey) {
-      setNotice("Admin connection is not configured. Add the public Supabase URL and publishable key to Vercel.");
-      return;
-    }
     setLoading(true);
     try {
       const response = await fetch(`${apiUrl}/rest/v1/inquiries?select=*&order=created_at.desc&limit=200`, {
@@ -51,10 +47,6 @@ export default function AdminDashboard() {
 
   async function signIn(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!apiUrl || !publishableKey) {
-      setNotice("Admin connection is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in Vercel.");
-      return;
-    }
     setLoading(true);
     setNotice("");
     try {
