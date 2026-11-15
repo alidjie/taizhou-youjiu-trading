@@ -22,7 +22,6 @@ export async function GET(_request: NextRequest, { params }: RouteContext) {
 export async function PUT(request: NextRequest, { params }: RouteContext) {
   try {
     const { id } = await params;
-    const body = await request.json();
     const product = getProductById(id);
     if (!product) {
       return NextResponse.json({ success: false, error: "Product not found" }, { status: 404 });
