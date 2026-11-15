@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     if (!url || !key) return NextResponse.json({ error: "Enquiry service is not configured" }, { status: 503 });
     const response = await fetch(`${url}/rest/v1/inquiries`, {
       method: "POST",
-      headers: { apikey: key, Authorization: `Bearer ${key}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+      headers: { apikey: key, "Content-Type": "application/json", Prefer: "return=minimal" },
       body: JSON.stringify({
         name, email, company: String(body.company || "").slice(0,200), country: String(body.country || "Not specified").slice(0,100),
         phone: String(body.whatsapp || "").slice(0,100), product_category: String(body.product_category || "").slice(0,80),
