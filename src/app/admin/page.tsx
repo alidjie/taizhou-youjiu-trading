@@ -276,6 +276,22 @@ export default function AdminDashboard() {
     setLoading(true);
     setError("");
     try {
+      // RLS returns an empty array (HTTP 200) for non-admin users.
+      // Check the user's own CMS membership first so this cannot look like an empty CMS.
+      const memberships = await requestRows<{ user_id: string }>(
+        "cms_admins?select=user_id&limit=1",
+        token
+      );
+      if (!memberships.length) {
+        setInquiries([]);
+        setProducts([]);
+        setContentBlocks([]);
+        setNeedsAdminClaim(true);
+        setError("当前账号已登录，但尚未获得 YOUJIU CMS 管理员权限。请使用首位管理员激活码完成首次开通；如果管理员已由其他账号开通，请联系现有管理员授权。");
+        return;
+      }
+
+      setNeedsAdminClaim(false);
       const [inquiryRows, productRows, blockRows] = await Promise.all([
         requestRows<Inquiry>("inquiries?select=*&order=created_at.desc&limit=200", token),
         requestRows<Product>("products?select=*&order=sort_order.asc,created_at.desc", token),
