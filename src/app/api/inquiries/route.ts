@@ -12,9 +12,9 @@ export async function POST(request: NextRequest) {
     if (name.length < 2 || name.length > 120 || email.length < 5 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || message.length < 5 || message.length > 5000) {
       return NextResponse.json({ error: "Invalid enquiry details" }, { status: 400 });
     }
-    const url = process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_PUBLISHABLE_KEY;
-    if (!url || !key) return NextResponse.json({ error: "Enquiry service is not configured" }, { status: 503 });
+    const url = process.env.SUPABASE_URL || "https://fsqpeuulaglnnwfyxndj.supabase.co";
+    const key = process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_27Jb43sOATe3CJlIEP-zVQ_-QFD6HOB";
+    
     const response = await fetch(`${url}/rest/v1/inquiries`, {
       method: "POST",
       headers: { apikey: key, "Content-Type": "application/json", Prefer: "return=minimal" },
