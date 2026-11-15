@@ -1,8 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProductById } from '@/data/products';
 
+type QuoteRecord = {
+  id: string;
+  inquiryId: string;
+  productId: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  quantityDiscount: number;
+  customerDiscount: number;
+  totalDiscount: number;
+  validUntil: Date;
+  currency: string;
+  terms: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 // 模拟数据库存储
-let quotes: any[] = [];
+const quotes: QuoteRecord[] = [];
 
 // 自动报价逻辑
 function calculateQuote(productId: string, quantity: number, customerType: string = 'regular') {
@@ -11,7 +29,7 @@ function calculateQuote(productId: string, quantity: number, customerType: strin
     throw new Error('Product not found or no price available');
   }
 
-  let basePrice = product.price.min;
+  const basePrice = product.price.min;
   
   // 根据数量计算折扣
   let quantityDiscount = 0;
