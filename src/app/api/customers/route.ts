@@ -1,136 +1,79 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { Customer } from '@/types';
+import { NextRequest, NextResponse } from "next/server";
+import { Customer } from "@/types";
 
-// 模拟数据库存储
 const customers: Customer[] = [];
 
-// POST /api/customers - 创建新客户
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    // 验证必需字段
-    const requiredFields = ['name', 'email', 'country'];
+    const requiredFields = ["name", "email", "country"];
     for (const field of requiredFields) {
       if (!body[field]) {
-        return NextResponse.json(
-          { success: false, error: `Missing required field: ${field}` },
-          { status: 400 }
-        );
+        return NextResponse.json({ success: false, error: `Missing required field: ${field}` }, { status: 400 });
       }
     }
 
-    // 验证邮箱格式
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(body.email)) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid email format' },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, error: "Invalid email format" }, { status: 400 });
+    }
+    if (customers.some((customer) => customer.email === body.email)) {
+      return NextResponse.json({ success: false, error: "Customer with this email already exists" }, { status: 409 });
     }
 
-    // 检查邮箱是否已存在
-    const existingCustomer = customers.find(c => c.email === body.email);
-    if (existingCustomer) {
-      return NextResponse.json(
-        { success: false, error: 'Customer with this email already exists' },
-        { status: 409 }
-      );
-    }
-
-    // 创建新客户
     const newCustomer: Customer = {
       id: `customer-${Date.now()}`,
-      name: body.name,
-      email: body.email,
-      phone: body.phone || null,
-      company: body.company || null,
-      country: body.country,
-      subscribed: body.subscribed || false,
+      name: String(body.name),
+      email: String(body.email),
+      phone: body.phone ? String(body.phone) : null,
+      company: body.company ? String(body.company) : null,
+      country: String(body.country),
+      customerType: body.customerType === "vip" || body.customerType === "wholesale" ? body.customerType : "regular",
+      subscribed: body.subscribed === true,
       registeredAt: new Date(),
-      lastOrderDate: null,
+      lastOrderDate: null
     };
-
-    // 保存到模拟数据库
     customers.push(newCustomer);
-
-    return NextResponse.json({
-      success: true,
-      data: newCustomer,
-      message: 'Customer created successfully'
-    }, { status: 201 });
+    return NextResponse.json({ success: true, data: newCustomer, message: "Customer created successfully" }, { status: 201 });
   } catch (error) {
-    console.error('Error creating customer:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to create customer' },
-      { status: 500 }
-    );
+    console.error("Error creating customer:", error);
+    return NextResponse.json({ success: false, error: "Failed to create customer" }, { status: 500 });
   }
 }
 
-// GET /api/customers - 获取所有客户
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const country = searchParams.get('country');
-    const customerType = searchParams.get('customerType');
-    const subscribed = searchParams.get('subscribed');
-    const search = searchParams.get('search');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const country = searchParams.get("country");
+    const customerType = searchParams.get("customerType");
+    const subscribed = searchParams.get("subscribed");
+    const search = searchParams.get("search");
+    const page = Math.max(1, Number.parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = Math.min(100, Math.max(1, Number.parseInt(searchParams.get("limit") || "10", 10) || 10));
 
-    let filteredCustomers: Customer[] = [...customers];
-
-    // 按国家筛选
-    if (country) {
-      filteredCustomers = filteredCustomers.filter(customer => customer.country === country);
-    }
-
-    // 按客户类型筛选
-    if (customerType) {
-      filteredCustomers = filteredCustomers.filter(customer => customer.customerType === customerType);
-    }
-
-    // 按订阅状态筛选
-    if (subscribed !== null) {
-      const isSubscribed = subscribed === 'true';
-      filteredCustomers = filteredCustomers.filter(customer => customer.subscribed === isSubscribed);
-    }
-
-    // 搜索功能
+    let filteredCustomers = [...customers];
+    if (country) filteredCustomers = filteredCustomers.filter((customer) => customer.country === country);
+    if (customerType) filteredCustomers = filteredCustomers.filter((customer) => customer.customerType === customerType);
+    if (subscribed !== null) filteredCustomers = filteredCustomers.filter((customer) => customer.subscribed === (subscribed === "true"));
     if (search) {
-      const searchTerm = search.toLowerCase();
-      filteredCustomers = filteredCustomers.filter(customer => 
-        customer.name.toLowerCase().includes(searchTerm) ||
-        customer.email.toLowerCase().includes(searchTerm) ||
-        (customer.company && customer.company.toLowerCase().includes(searchTerm))
+      const term = search.toLowerCase();
+      filteredCustomers = filteredCustomers.filter((customer) =>
+        customer.name.toLowerCase().includes(term) ||
+        customer.email.toLowerCase().includes(term) ||
+        Boolean(customer.company?.toLowerCase().includes(term))
       );
     }
+    filteredCustomers.sort((a, b) => b.registeredAt.getTime() - a.registeredAt.getTime());
 
-    // 按注册日期排序（最新的在前）
-    filteredCustomers.sort((a, b) => new Date(b.registeredAt).getTime() - new Date(a.registeredAt).getTime());
-
-    // 分页
     const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
-    const paginatedCustomers = filteredCustomers.slice(startIndex, endIndex);
-
+    const data = filteredCustomers.slice(startIndex, startIndex + limit);
     return NextResponse.json({
       success: true,
-      data: paginatedCustomers,
-      pagination: {
-        page,
-        limit,
-        total: filteredCustomers.length,
-        totalPages: Math.ceil(filteredCustomers.length / limit)
-      }
+      data,
+      pagination: { page, limit, total: filteredCustomers.length, totalPages: Math.ceil(filteredCustomers.length / limit) }
     });
   } catch (error) {
-    console.error('Error fetching customers:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch customers' },
-      { status: 500 }
-    );
+    console.error("Error fetching customers:", error);
+    return NextResponse.json({ success: false, error: "Failed to fetch customers" }, { status: 500 });
   }
 }
-
