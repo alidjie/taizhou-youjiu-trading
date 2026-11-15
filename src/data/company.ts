@@ -1,52 +1,31 @@
-// 公司信息
 export const companyInfo = {
-  name: 'Taizhou Youjiu Trading Co., Ltd.',
-  shortName: 'Youjiu Trading',
-  domain: 'aluew.com',
-  email: 'info@aluew.com',
-  phone: '+86-576-8888-8888',
-  address: 'Taizhou, Zhejiang Province, China',
-  description: 'Professional supplier of magnetic materials, magnetic filters, enameled wire, and agricultural machinery.',
-  established: '2010',
-  employees: '50-100',
-  certifications: ['ISO 9001:2015', 'CE', 'RoHS'],
-  markets: ['North America', 'Europe', 'Southeast Asia', 'Middle East']
+  name: "YOUJIU",
+  legalName: "Taizhou Youjiu Trading Co., Ltd.",
+  shortName: "YOUJIU",
+  domain: "almcp.com",
+  email: "sales@almcp.com",
+  phone: "Contact our international sales team",
+  whatsapp: "",
+  address: "Taizhou, Zhejiang Province, China",
+  description: "Intelligent mobility and industrial component solutions for global partners.",
+  established: "2010",
+  employees: "Manufacturing network",
+  certifications: ["Certification documents available on request"],
+  markets: ["Middle East", "South America", "Central Asia", "Eastern Europe", "Southeast Asia"]
 };
 
-// 产品类别信息
 export const productCategories = [
-  {
-    id: 'magnetic-materials',
-    name: 'Magnetic Materials',
-    description: 'High-performance permanent magnets including neodymium, ferrite, and samarium cobalt magnets.',
-    image: '/images/categories/magnetic-materials.jpg'
-  },
-  {
-    id: 'magnetic-filters',
-    name: 'Magnetic Filters',
-    description: 'Industrial magnetic separators and filters for removing ferrous contaminants.',
-    image: '/images/categories/magnetic-filters.jpg'
-  },
-  {
-    id: 'enameled-wire',
-    name: 'Enameled Wire',
-    description: 'Premium quality enameled copper and aluminum wire for electrical applications.',
-    image: '/images/categories/enameled-wire.jpg'
-  },
-  {
-    id: 'agricultural-machinery',
-    name: 'Agricultural Machinery',
-    description: 'Professional farming equipment including tillers, harrows, and planting machinery.',
-    image: '/images/categories/agricultural-machinery.jpg'
-  }
+  { id: "electric-motorcycles", name: "Electric Motorcycles", description: "Urban and utility electric motorcycles engineered for regional markets.", image: "/images/categories/electric-motorcycles.jpg" },
+  { id: "electric-bicycles", name: "Electric Bicycles", description: "Practical electric two-wheelers for daily mobility and distribution.", image: "/images/categories/electric-bicycles.jpg" },
+  { id: "electric-motors", name: "Electric Motors", description: "BLDC and traction motor solutions for electric mobility applications.", image: "/images/categories/electric-motors.jpg" },
+  { id: "suspension-systems", name: "Suspension Systems", description: "Motorcycle and automotive shock absorbers and related components.", image: "/images/categories/suspension-systems.jpg" }
 ];
 
-// 导航菜单
 export const navigationMenu = [
-  { name: 'Home', href: '/' },
-  { name: 'Products', href: '/products' },
-  { name: 'About Us', href: '/about' },
-  { name: 'Contact', href: '/contact' },
-  { name: 'Inquiry', href: '/inquiry' }
+  { name: "Home", href: "/" },
+  { name: "Products", href: "/products" },
+  { name: "Manufacturing", href: "/about" },
+  { name: "About", href: "/about" },
+  { name: "Contact", href: "/contact" },
+  { name: "Get a Quote", href: "/inquiry" }
 ];
-
