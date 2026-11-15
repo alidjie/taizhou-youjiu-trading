@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
 
     // 计算订单总金额
     let totalAmount = 0;
-    const validatedItems: OrderItem[] = body.items.map((item: any) => {
+    const itemDetails = body.items as Array<{ productId: string; productName: string; quantity: number; unitPrice: number }>;
+    const validatedItems: OrderItem[] = itemDetails.map((item) => {
       if (!item.productId || !item.quantity || !item.unitPrice) {
         throw new Error('Invalid item data');
       }
