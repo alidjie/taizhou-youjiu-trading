@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+type CustomerRecord = {
+  email: string;
+  name?: string;
+  customerType?: string;
+};
+
 // POST /api/notifications/newsletter - 发送产品更新邮件
 export async function POST(request: NextRequest) {
   try {
@@ -25,7 +31,7 @@ export async function POST(request: NextRequest) {
     }
 
     const customersData = await customersResponse.json();
-    const subscribedCustomers = customersData.data || [];
+    const subscribedCustomers: CustomerRecord[] = (customersData.data || []) as CustomerRecord[];
 
     if (subscribedCustomers.length === 0) {
       return NextResponse.json({
@@ -40,13 +46,13 @@ export async function POST(request: NextRequest) {
     // 筛选目标客户
     let targetCustomerList = subscribedCustomers;
     if (targetCustomers === 'vip') {
-      targetCustomerList = subscribedCustomers.filter((customer: any) => customer.customerType === 'vip');
+      targetCustomerList = subscribedCustomers.filter((customer) => customer.customerType === 'vip');
     } else if (targetCustomers === 'wholesale') {
       targetCustomerList = subscribedCustomers.filter((customer: any) => customer.customerType === 'wholesale');
     }
 
     // 发送邮件给每个订阅客户
-    const emailPromises = targetCustomerList.map(async (customer: any) => {
+    const emailPromises = targetCustomerList.map(async (customer) => {
       try {
         const emailResponse = await fetch(`${request.nextUrl.origin}/api/notifications/email`, {
           method: 'POST',
