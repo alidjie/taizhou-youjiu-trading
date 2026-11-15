@@ -40,7 +40,6 @@ async function publicRest<T>(path: string): Promise<T | null> {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
       headers: {
         apikey: SUPABASE_KEY,
-        Authorization: `Bearer ${SUPABASE_KEY}`,
       },
       cache: "no-store",
     });
