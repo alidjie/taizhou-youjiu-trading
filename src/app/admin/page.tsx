@@ -182,7 +182,10 @@ function jsonHeaders(token: string) {
 export default function AdminDashboard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [accessToken, setAccessToken] = useState("");
+  const [needsAdminClaim, setNeedsAdminClaim] = useState(false);
+  const [bootstrapCode, setBootstrapCode] = useState("");
   const [tab, setTab] = useState<"inquiries" | "products" | "content">("products");
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -235,7 +238,9 @@ export default function AdminDashboard() {
       setProducts(productRows);
       setContentBlocks(blockRows);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "后台数据读取失败。");
+      const message = err instanceof Error ? err.message : "后台数据读取失败。";
+      setError(message);
+      if (message.includes("管理员权限")) setNeedsAdminClaim(true);
     } finally {
       setLoading(false);
     }
@@ -264,6 +269,66 @@ export default function AdminDashboard() {
       setPassword("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function signUp(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setLoading(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch(`${apiUrl}/auth/v1/signup`, {
+        method: "POST",
+        headers: { apikey: publishableKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const result = await response.json() as { access_token?: string; msg?: string; message?: string };
+      if (!response.ok) throw new Error(result.msg || result.message || "账号注册失败。");
+      if (result.access_token) {
+        setAccessToken(result.access_token);
+        setPassword("");
+        setNotice("账号创建成功。首次使用请完成管理员激活。");
+      } else {
+        setAuthMode("signin");
+        setPassword("");
+        setNotice("注册请求已提交。请先打开邮箱，完成 Supabase 发来的验证邮件，再返回这里登录。");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "账号注册失败。");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function activateFirstAdmin(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!bootstrapCode.trim()) {
+      setError("请输入一次性管理员激活码。");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`${apiUrl}/rest/v1/rpc/claim_first_cms_admin`, {
+        method: "POST",
+        headers: jsonHeaders(accessToken),
+        body: JSON.stringify({ p_code: bootstrapCode.trim() })
+      });
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(detail.includes("already been activated")
+          ? "首位管理员已激活。当前账号不在管理员名单中。"
+          : "激活失败。请检查激活码是否正确、是否过期，或是否已经使用。");
+      }
+      setBootstrapCode("");
+      setNeedsAdminClaim(false);
+      setNotice("管理员权限已激活。现在可以管理产品、网站文案和询盘。");
+      await loadAll(accessToken);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "管理员激活失败。");
     } finally {
       setLoading(false);
     }
@@ -496,13 +561,18 @@ export default function AdminDashboard() {
           <div className="text-[10px] tracking-[.2em] text-[#7ca51c] font-black">PRIVATE CONTENT MANAGEMENT</div>
           <h1 className="text-3xl font-black mt-3">管理后台登录</h1>
           <p className="text-sm text-slate-500 mt-3 leading-6">登录后可以上传产品、维护产品详情、更新网站营销文案和管理客户询盘。</p>
-          <form onSubmit={signIn} className="mt-8 space-y-5">
+          <div className="flex gap-2 mt-7 border-b border-slate-200">
+            <button type="button" onClick={()=>{setAuthMode("signin");setError("");setNotice("");}} className={`px-3 py-2 text-xs font-bold border-b-2 ${authMode==="signin"?"border-[#7ca51c]":"border-transparent text-slate-400"}`}>已有账号登录</button>
+            <button type="button" onClick={()=>{setAuthMode("signup");setError("");setNotice("");}} className={`px-3 py-2 text-xs font-bold border-b-2 ${authMode==="signup"?"border-[#7ca51c]":"border-transparent text-slate-400"}`}>首次创建账号</button>
+          </div>
+          <form onSubmit={authMode==="signin"?signIn:signUp} className="mt-6 space-y-5">
             <label className="block text-xs font-bold">管理员邮箱<input type="email" required value={email} onChange={event=>setEmail(event.target.value)} className="block w-full border border-slate-300 mt-2 px-4 py-3 font-normal"/></label>
-            <label className="block text-xs font-bold">密码<input type="password" required value={password} onChange={event=>setPassword(event.target.value)} className="block w-full border border-slate-300 mt-2 px-4 py-3 font-normal"/></label>
-            <button disabled={loading} className="btn-primary w-full disabled:opacity-50">{loading ? "正在登录..." : "登录管理后台 ↗"}</button>
+            <label className="block text-xs font-bold">密码<input type="password" required minLength={8} value={password} onChange={event=>setPassword(event.target.value)} className="block w-full border border-slate-300 mt-2 px-4 py-3 font-normal"/></label>
+            <button disabled={loading} className="btn-primary w-full disabled:opacity-50">{loading ? "正在处理..." : authMode==="signin" ? "登录管理后台 ↗" : "创建 Supabase 登录账号 ↗"}</button>
           </form>
+          {notice && <p role="status" className="text-sm text-emerald-800 bg-emerald-50 p-3 mt-5">{notice}</p>}
           {error && <p role="alert" className="text-sm text-red-700 bg-red-50 p-3 mt-5">{error}</p>}
-          <p className="text-[11px] text-slate-400 mt-6 leading-5">管理员权限由系统单独控制。普通 Supabase 用户不会自动获得产品和网站内容的编辑权限。</p>
+          <p className="text-[11px] text-slate-400 mt-6 leading-5">请使用你能收取验证邮件的业务邮箱。首位管理员还需完成一次性激活；普通注册账号不会自动获得网站编辑权限。</p>
         </div>
       </section>
     </main>;
@@ -524,6 +594,7 @@ export default function AdminDashboard() {
         <div className="bg-white border border-slate-200 p-5"><div className="text-[10px] text-slate-500 tracking-widest">可编辑内容模块</div><div className="text-3xl font-black mt-2">{contentBlocks.length}</div><div className="text-xs text-slate-400 mt-1">首页、About、产品分类</div></div>
       </div>
 
+      {needsAdminClaim && <section className="bg-white border border-[#c6d98a] p-5 md:p-6 mb-6"><div className="text-[10px] tracking-widest text-[#7ca51c] font-black">FIRST ADMIN ACTIVATION</div><h2 className="text-xl font-black mt-2">激活首位网站管理员</h2><p className="text-sm text-slate-600 leading-6 mt-2">当前账号已经登录，但尚未获得 YOUJIU CMS 权限。输入一次性激活码即可把当前账号加入管理员名单。激活成功后，激活码立即失效。</p><form onSubmit={activateFirstAdmin} className="mt-4 flex flex-wrap gap-3"><input value={bootstrapCode} onChange={event=>setBootstrapCode(event.target.value)} placeholder="输入一次性激活码" className="border border-slate-300 px-3 py-3 text-sm flex-1 min-w-[240px]"/><button disabled={loading} className="btn-primary disabled:opacity-50">{loading?"正在激活...":"激活管理员权限"}</button></form></section>}
       {error && <div role="alert" className="bg-red-50 border border-red-200 text-red-800 p-4 text-sm mb-5 whitespace-pre-wrap">{error}</div>}
       {notice && <div role="status" className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 text-sm mb-5">{notice}</div>}
 
