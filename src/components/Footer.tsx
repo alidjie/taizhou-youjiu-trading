@@ -1,50 +1,13 @@
-import { companyInfo } from "../data/company";
+import Link from "next/link";
+import { companyInfo, productCategories } from "../data/company";
 
 export default function Footer() {
-  return (
-    <footer className="bg-gray-900 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          {/* Company Info */}
-          <div className="col-span-1 md:col-span-2">
-            <h3 className="text-xl font-bold mb-4">{companyInfo.name}</h3>
-            <p className="text-gray-300 mb-4">{companyInfo.description}</p>
-            <div className="space-y-2 text-sm text-gray-300">
-              <p>📍 {companyInfo.address}</p>
-              <p>📞 {companyInfo.phone}</p>
-              <p>✉️ {companyInfo.email}</p>
-            </div>
-          </div>
-
-          {/* Quick Links */}
-          <div>
-            <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
-            <ul className="space-y-2 text-sm text-gray-300">
-              <li><a href="/products" className="hover:text-white transition-colors">Products</a></li>
-              <li><a href="/about" className="hover:text-white transition-colors">About Us</a></li>
-              <li><a href="/contact" className="hover:text-white transition-colors">Contact</a></li>
-              <li><a href="/inquiry" className="hover:text-white transition-colors">Inquiry</a></li>
-            </ul>
-          </div>
-
-          {/* Product Categories */}
-          <div>
-            <h4 className="text-lg font-semibold mb-4">Products</h4>
-            <ul className="space-y-2 text-sm text-gray-300">
-              <li><a href="/products/magnetic-materials" className="hover:text-white transition-colors">Magnetic Materials</a></li>
-              <li><a href="/products/magnetic-filters" className="hover:text-white transition-colors">Magnetic Filters</a></li>
-              <li><a href="/products/enameled-wire" className="hover:text-white transition-colors">Enameled Wire</a></li>
-              <li><a href="/products/agricultural-machinery" className="hover:text-white transition-colors">Agricultural Machinery</a></li>
-            </ul>
-          </div>
-        </div>
-
-        <div className="border-t border-gray-700 mt-8 pt-8 text-center text-sm text-gray-400">
-          <p>&copy; {new Date().getFullYear()} {companyInfo.name}. All rights reserved.</p>
-        </div>
-      </div>
-    </footer>
-  );
+  return <footer className="bg-[#101923] text-white pt-16 pb-8">
+    <div className="container grid md:grid-cols-4 gap-10 pb-14">
+      <div className="md:col-span-2"><div className="text-2xl font-black tracking-[.16em]">YOUJIU</div><p className="text-slate-400 text-sm leading-7 max-w-md mt-5">{companyInfo.description} We connect global buyers with dependable electric mobility and industrial component manufacturing resources.</p><p className="text-slate-500 text-xs mt-6">{companyInfo.address}</p></div>
+      <div><h3 className="text-xs tracking-[.18em] font-bold mb-5">PRODUCTS</h3><ul className="space-y-3">{productCategories.map(c=><li key={c.id}><Link className="text-sm text-slate-400 hover:text-[#b8ed36]" href={`/products/${c.id}`}>{c.name}</Link></li>)}</ul></div>
+      <div><h3 className="text-xs tracking-[.18em] font-bold mb-5">GET IN TOUCH</h3><p className="text-sm text-slate-400 mb-3">International Sales</p><a className="text-sm text-[#b8ed36]" href={`mailto:${companyInfo.email}`}>{companyInfo.email}</a><p className="text-xs text-slate-500 mt-5">For OEM, wholesale and distribution enquiries.</p></div>
+    </div>
+    <div className="container border-t border-white/10 pt-6 flex flex-wrap justify-between gap-3 text-[10px] text-slate-500"><span>© {new Date().getFullYear()} YOUJIU. All rights reserved.</span><span>ENGINEERED FOR GLOBAL MOBILITY.</span></div>
+  </footer>;
 }
-
-
