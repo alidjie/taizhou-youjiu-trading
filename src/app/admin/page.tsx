@@ -77,6 +77,16 @@ type ContentDraft = {
   published: boolean;
 };
 
+type AuthResponse = {
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  msg?: string;
+  message?: string;
+};
+
+const CMS_SESSION_KEY = "youjiu-cms-session";
+
 const apiUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://fsqpeuulaglnnwfyxndj.supabase.co";
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_27Jb43sOATe3CJlIEP-zVQ_-QFD6HOB";
 
@@ -184,6 +194,8 @@ export default function AdminDashboard() {
   const [password, setPassword] = useState("");
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
   const [accessToken, setAccessToken] = useState("");
+  const [refreshToken, setRefreshToken] = useState("");
+  const [sessionExpiresAt, setSessionExpiresAt] = useState(0);
   const [needsAdminClaim, setNeedsAdminClaim] = useState(false);
   const [bootstrapCode, setBootstrapCode] = useState("");
   const [tab, setTab] = useState<"inquiries" | "products" | "content">("products");
@@ -198,6 +210,43 @@ export default function AdminDashboard() {
   const [uploading, setUploading] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+
+  function applyAuthSession(result: AuthResponse) {
+    if (!result.access_token || !result.refresh_token) {
+      throw new Error("登录成功，但认证会话不完整。请重新登录。");
+    }
+    const expiresAt = Math.floor(Date.now() / 1000) + (result.expires_in || 3600);
+    setAccessToken(result.access_token);
+    setRefreshToken(result.refresh_token);
+    setSessionExpiresAt(expiresAt);
+    window.localStorage.setItem(CMS_SESSION_KEY, JSON.stringify({
+      refresh_token: result.refresh_token
+    }));
+  }
+
+  function clearAuthSession() {
+    window.localStorage.removeItem(CMS_SESSION_KEY);
+    setAccessToken("");
+    setRefreshToken("");
+    setSessionExpiresAt(0);
+    setNeedsAdminClaim(false);
+    setInquiries([]);
+    setProducts([]);
+    setContentBlocks([]);
+  }
+
+  async function refreshCmsSession(token: string) {
+    const response = await fetch(`${apiUrl}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: { apikey: publishableKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: token })
+    });
+    const result = await response.json() as AuthResponse;
+    if (!response.ok) {
+      throw new Error(result.msg || result.message || "登录会话已失效，请重新登录。");
+    }
+    applyAuthSession(result);
+  }
 
   const filteredProducts = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -245,6 +294,55 @@ export default function AdminDashboard() {
   }
 
   useEffect(() => {
+    let active = true;
+    const stored = window.localStorage.getItem(CMS_SESSION_KEY);
+    if (stored) {
+      try {
+        const saved = JSON.parse(stored) as { refresh_token?: string };
+        if (saved.refresh_token) {
+          void (async () => {
+            try {
+              const response = await fetch(`${apiUrl}/auth/v1/token?grant_type=refresh_token`, {
+                method: "POST",
+                headers: { apikey: publishableKey, "Content-Type": "application/json" },
+                body: JSON.stringify({ refresh_token: saved.refresh_token })
+              });
+              const result = await response.json() as AuthResponse;
+              if (!response.ok) throw new Error(result.msg || result.message || "会话恢复失败");
+              if (active) applyAuthSession(result);
+            } catch {
+              if (active) {
+                clearAuthSession();
+                setNotice("登录状态已过期，请重新登录。");
+              }
+            }
+          })();
+        } else {
+          window.localStorage.removeItem(CMS_SESSION_KEY);
+        }
+      } catch {
+        window.localStorage.removeItem(CMS_SESSION_KEY);
+      }
+    }
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    if (!accessToken || !refreshToken || !sessionExpiresAt) return;
+    const refreshIn = Math.max(
+      5000,
+      (sessionExpiresAt - Math.floor(Date.now() / 1000) - 120) * 1000
+    );
+    const timer = window.setTimeout(() => {
+      void refreshCmsSession(refreshToken).catch(() => {
+        clearAuthSession();
+        setError("登录会话已过期，请重新登录。");
+      });
+    }, refreshIn);
+    return () => window.clearTimeout(timer);
+  }, [accessToken, refreshToken, sessionExpiresAt]);
+
+  useEffect(() => {
     if (accessToken) void loadAll(accessToken);
   }, [accessToken]);
 
@@ -259,11 +357,11 @@ export default function AdminDashboard() {
         headers: { apikey: publishableKey, "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
-      const result = await response.json() as { access_token?: string; msg?: string; message?: string };
-      if (!response.ok || !result.access_token) {
+      const result = await response.json() as AuthResponse;
+      if (!response.ok || !result.access_token || !result.refresh_token) {
         throw new Error(result.msg || result.message || "登录失败，请检查邮箱和密码。");
       }
-      setAccessToken(result.access_token);
+      applyAuthSession(result);
       setPassword("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "登录失败。");
@@ -283,10 +381,10 @@ export default function AdminDashboard() {
         headers: { apikey: publishableKey, "Content-Type": "application/json" },
         body: JSON.stringify({ email, password })
       });
-      const result = await response.json() as { access_token?: string; msg?: string; message?: string };
+      const result = await response.json() as AuthResponse;
       if (!response.ok) throw new Error(result.msg || result.message || "账号注册失败。");
-      if (result.access_token) {
-        setAccessToken(result.access_token);
+      if (result.access_token && result.refresh_token) {
+        applyAuthSession(result);
         setPassword("");
         setNotice("账号创建成功。首次使用请完成管理员激活。");
       } else {
@@ -298,6 +396,20 @@ export default function AdminDashboard() {
       setError(err instanceof Error ? err.message : "账号注册失败。");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function signOut() {
+    try {
+      if (accessToken) {
+        await fetch(`${apiUrl}/auth/v1/logout`, {
+          method: "POST",
+          headers: { apikey: publishableKey, Authorization: `Bearer ${accessToken}` }
+        });
+      }
+    } finally {
+      clearAuthSession();
+      setNotice("已安全退出管理后台。");
     }
   }
 
@@ -394,6 +506,51 @@ export default function AdminDashboard() {
       setNotice(`成功上传 ${uploadedUrls.length} 张图片。保存产品后即会显示在网站上。`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "图片上传失败。");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function uploadContentImage(event: React.ChangeEvent<HTMLInputElement>, fieldKey: string) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file || !contentDraft) return;
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/avif"];
+    if (!allowedTypes.includes(file.type)) {
+      setError("页面图片仅支持 JPG、PNG、WebP 或 AVIF 格式。");
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      setError("页面图片不能超过 12MB。");
+      return;
+    }
+    setUploading(true);
+    setError("");
+    try {
+      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const folder = slugify(contentDraft.key) || "page-content";
+      const objectPath = `site-content/${folder}/${crypto.randomUUID()}.${extension}`;
+      const response = await fetch(`${apiUrl}/storage/v1/object/products/${objectPath}`, {
+        method: "POST",
+        headers: {
+          apikey: publishableKey,
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": file.type,
+          "x-upsert": "false"
+        },
+        body: file
+      });
+      if (!response.ok) {
+        const detail = await response.text();
+        throw new Error(detail || "页面图片上传失败。");
+      }
+      const publicUrl = `${apiUrl}/storage/v1/object/public/products/${objectPath}`;
+      setContentDraft(current => current
+        ? { ...current, content: { ...current.content, [fieldKey]: publicUrl } }
+        : current);
+      setNotice("页面图片上传成功。点击“保存文案”后，图片地址才会应用到网站页面。");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "页面图片上传失败。");
     } finally {
       setUploading(false);
     }
@@ -546,7 +703,7 @@ export default function AdminDashboard() {
     <header className="bg-[#101923] text-white px-5 md:px-8 py-4">
       <div className="max-w-[1500px] mx-auto flex items-center justify-between gap-4">
         <Link href="/" className="font-black tracking-[.16em] text-lg md:text-xl">YOUJIU <span className="text-[#b8ed36]">/</span> CMS</Link>
-        <div className="flex items-center gap-3"><span className="hidden sm:block text-[10px] text-slate-400 tracking-widest">CONTENT MANAGEMENT</span><button onClick={()=>{setAccessToken("");setInquiries([]);setProducts([]);setContentBlocks([]);}} className="text-xs border border-white/20 px-3 py-2 hover:border-[#b8ed36]">退出登录</button></div>
+        <div className="flex items-center gap-3"><span className="hidden sm:block text-[10px] text-slate-400 tracking-widest">CONTENT MANAGEMENT</span><button onClick={()=>void signOut()} className="text-xs border border-white/20 px-3 py-2 hover:border-[#b8ed36]">退出登录</button></div>
       </div>
     </header>
     <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-7">
@@ -555,7 +712,7 @@ export default function AdminDashboard() {
       <div className="grid sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-white border border-slate-200 p-5"><div className="text-[10px] text-slate-500 tracking-widest">产品总数</div><div className="text-3xl font-black mt-2">{productCount}</div><div className="text-xs text-slate-400 mt-1">已发布 {publishedCount} 个</div></div>
         <div className="bg-white border border-slate-200 p-5"><div className="text-[10px] text-slate-500 tracking-widest">待处理询盘</div><div className="text-3xl font-black mt-2">{newInquiryCount}</div><div className="text-xs text-slate-400 mt-1">最近 200 条询盘记录</div></div>
-        <div className="bg-white border border-slate-200 p-5"><div className="text-[10px] text-slate-500 tracking-widest">可编辑内容模块</div><div className="text-3xl font-black mt-2">{contentBlocks.length}</div><div className="text-xs text-slate-400 mt-1">首页、About、产品分类</div></div>
+        <div className="bg-white border border-slate-200 p-5"><div className="text-[10px] text-slate-500 tracking-widest">可编辑内容模块</div><div className="text-3xl font-black mt-2">{contentBlocks.length}</div><div className="text-xs text-slate-400 mt-1">首页、About、Contact、产品及询盘页面</div></div>
       </div>
 
       {needsAdminClaim && <section className="bg-white border border-[#c6d98a] p-5 md:p-6 mb-6"><div className="text-[10px] tracking-widest text-[#7ca51c] font-black">FIRST ADMIN ACTIVATION</div><h2 className="text-xl font-black mt-2">激活首位网站管理员</h2><p className="text-sm text-slate-600 leading-6 mt-2">当前账号已经登录，但尚未获得 YOUJIU CMS 权限。输入一次性激活码即可把当前账号加入管理员名单。激活成功后，激活码立即失效。</p><form onSubmit={activateFirstAdmin} className="mt-4 flex flex-wrap gap-3"><input value={bootstrapCode} onChange={event=>setBootstrapCode(event.target.value)} placeholder="输入一次性激活码" className="border border-slate-300 px-3 py-3 text-sm flex-1 min-w-[240px]"/><button disabled={loading} className="btn-primary disabled:opacity-50">{loading?"正在激活...":"激活管理员权限"}</button></form></section>}
@@ -610,7 +767,7 @@ export default function AdminDashboard() {
         </section>
         <section className="bg-white border border-slate-200">
           <div className="p-5 border-b border-slate-200"><div className="text-[10px] tracking-widest text-[#7ca51c] font-black">MARKETING COPY EDITOR</div><h2 className="font-black text-xl mt-1">{contentDraft?.label || "选择一个内容模块"}</h2><p className="text-xs text-slate-500 mt-2">编辑后保存，网站读取数据库中的新文案，不需要重新部署。</p></div>
-          {contentDraft ? <form onSubmit={saveContent} className="p-5 md:p-7"><div className="grid md:grid-cols-2 gap-4 mb-5"><label className="block text-xs font-bold">模块名称<input value={contentDraft.label} onChange={event=>setContentDraft(current=>current?({...current,label:event.target.value}):current)} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/></label><label className="block text-xs font-bold">页面<select value={contentDraft.page} onChange={event=>setContentDraft(current=>current?({...current,page:event.target.value}):current)} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal bg-white"><option value="home">首页</option><option value="about">About</option><option value="products">产品中心</option></select></label></div><div className="space-y-4">{Object.entries(contentDraft.content).map(([key,value])=><label key={key} className="block text-xs font-bold">{contentFieldLabels[key] || key}{["body","secondary_body","headline"].includes(key)?<textarea rows={key==="body"?5:3} value={value} onChange={event=>setContentDraft(current=>current?({...current,content:{...current.content,[key]:event.target.value}}):current)} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/>:<input value={value} onChange={event=>setContentDraft(current=>current?({...current,content:{...current.content,[key]:event.target.value}}):current)} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/>}</label>)}{!Object.keys(contentDraft.content).length&&<p className="text-sm text-slate-500">该模块暂无字段。请先添加字段或选择其他模块。</p>}</div><div className="mt-8 bg-[#101923] text-white p-7 md:p-9"><div className="text-[10px] tracking-[.2em] text-[#b8ed36] font-black">{contentDraft.content.eyebrow || "MARKETING EYEBROW"}</div><h3 className="text-3xl md:text-4xl font-black mt-4 whitespace-pre-line">{contentDraft.content.headline_before ? <>{contentDraft.content.headline_before}<br/><span className="text-[#b8ed36]">{contentDraft.content.headline_accent}</span><br/>{contentDraft.content.headline_after}</> : contentDraft.content.headline || "Your marketing headline preview"}</h3><p className="text-slate-300 text-sm leading-7 mt-5 whitespace-pre-line">{contentDraft.content.body || "The marketing copy preview will appear here."}</p>{contentDraft.content.primary_label && <span className="inline-block bg-[#b8ed36] text-[#101923] text-xs font-black px-4 py-3 mt-6">{contentDraft.content.primary_label}</span>}</div><div className="mt-7 border-t border-slate-200 pt-5 flex flex-wrap items-center justify-between gap-4"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={contentDraft.published} onChange={event=>setContentDraft(current=>current?({...current,published:event.target.checked}):current)}/>在网站展示此模块</label><button disabled={loading} className="btn-primary disabled:opacity-50">{loading?"保存中...":"保存文案"}</button></div></form>:<div className="p-10 text-sm text-slate-500">从左侧选择一个首页、About 或产品分类文案模块。</div>}
+          {contentDraft ? <form onSubmit={saveContent} className="p-5 md:p-7"><div className="grid md:grid-cols-2 gap-4 mb-5"><label className="block text-xs font-bold">模块名称<input value={contentDraft.label} onChange={event=>setContentDraft(current=>current?({...current,label:event.target.value}):current)} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/></label><label className="block text-xs font-bold">页面<select value={contentDraft.page} onChange={event=>setContentDraft(current=>current?({...current,page:event.target.value}):current)} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal bg-white"><option value="home">首页</option><option value="about">About</option><option value="products">产品中心</option><option value="contact">Contact</option><option value="inquiry">询盘页</option><option value="global">全站</option></select></label></div><div className="space-y-4">{Object.entries(contentDraft.content).map(([key,value])=>key === "image_url" ? <div key={key} className="block text-xs font-bold">{contentFieldLabels[key] || key}<div className="grid md:grid-cols-[1fr_auto] gap-3 mt-2"><input value={value} onChange={event=>setContentDraft(current=>current?({...current,content:{...current.content,[key]:event.target.value}}):current)} className="w-full border border-slate-300 px-3 py-3 text-sm font-normal"/><label className="inline-flex items-center justify-center bg-[#101923] text-white px-4 py-3 text-xs font-bold cursor-pointer">{uploading?"正在上传...":"上传替换图片"}<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploading} onChange={event=>void uploadContentImage(event,key)} className="hidden"/></label></div>{value&&<img src={value} alt="营销页面图片预览" className="mt-3 max-h-56 w-full object-contain bg-slate-100 border border-slate-200"/>}</div> : <label key={key} className="block text-xs font-bold">{contentFieldLabels[key] || key}{["body","secondary_body","headline"].includes(key)?<textarea rows={key==="body"?5:3} value={value} onChange={event=>setContentDraft(current=>current?({...current,content:{...current.content,[key]:event.target.value}}):current)} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/>:<input value={value} onChange={event=>setContentDraft(current=>current?({...current,content:{...current.content,[key]:event.target.value}}):current)} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/>}</label>) }{!Object.keys(contentDraft.content).length&&<p className="text-sm text-slate-500">该模块暂无字段。请先添加字段或选择其他模块。</p>}</div><div className="mt-8 bg-[#101923] text-white p-7 md:p-9"><div className="text-[10px] tracking-[.2em] text-[#b8ed36] font-black">{contentDraft.content.eyebrow || "MARKETING EYEBROW"}</div><h3 className="text-3xl md:text-4xl font-black mt-4 whitespace-pre-line">{contentDraft.content.headline_before ? <>{contentDraft.content.headline_before}<br/><span className="text-[#b8ed36]">{contentDraft.content.headline_accent}</span><br/>{contentDraft.content.headline_after}</> : contentDraft.content.headline || "Your marketing headline preview"}</h3><p className="text-slate-300 text-sm leading-7 mt-5 whitespace-pre-line">{contentDraft.content.body || "The marketing copy preview will appear here."}</p>{contentDraft.content.primary_label && <span className="inline-block bg-[#b8ed36] text-[#101923] text-xs font-black px-4 py-3 mt-6">{contentDraft.content.primary_label}</span>}</div><div className="mt-7 border-t border-slate-200 pt-5 flex flex-wrap items-center justify-between gap-4"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={contentDraft.published} onChange={event=>setContentDraft(current=>current?({...current,published:event.target.checked}):current)}/>在网站展示此模块</label><button disabled={loading||uploading} className="btn-primary disabled:opacity-50">{loading?"保存中...":uploading?"图片上传中...":"保存文案"}</button></div></form>:<div className="p-10 text-sm text-slate-500">从左侧选择一个首页、About 或产品分类文案模块。</div>}
         </section>
       </div>}
 
