@@ -1,8 +1,8 @@
-// 产品类型定义
+// Product catalogue types
 export interface Product {
   id: string;
   name: string;
-  category: 'magnetic-materials' | 'magnetic-filters' | 'enameled-wire' | 'agricultural-machinery';
+  category: "magnetic-materials" | "magnetic-filters" | "enameled-wire" | "agricultural-machinery";
   description: string;
   shortDescription: string;
   images: string[];
@@ -17,7 +17,7 @@ export interface Product {
   featured: boolean;
 }
 
-// 询盘类型定义
+// Enquiry types
 export interface Inquiry {
   id: string;
   customerName: string;
@@ -29,12 +29,12 @@ export interface Inquiry {
   productName?: string;
   quantity?: number;
   message: string;
-  status: 'new' | 'replied' | 'quoted' | 'closed';
+  status: "new" | "replied" | "quoted" | "closed";
   createdAt: Date;
   updatedAt: Date;
 }
 
-// 报价类型定义
+// Quote types
 export interface Quote {
   id: string;
   inquiryId: string;
@@ -45,11 +45,11 @@ export interface Quote {
   currency: string;
   validUntil: Date;
   terms: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  status: "pending" | "accepted" | "rejected" | "expired";
   createdAt: Date;
 }
 
-// 订单类型定义
+// Order types
 export interface Order {
   id: string;
   customerId: string;
@@ -58,7 +58,7 @@ export interface Order {
   items: OrderItem[];
   totalAmount: number;
   currency: string;
-  status: 'pending' | 'confirmed' | 'production' | 'shipped' | 'delivered' | 'cancelled';
+  status: "pending" | "confirmed" | "production" | "shipped" | "delivered" | "cancelled";
   orderDate: Date;
   estimatedDelivery?: Date;
   trackingNumber?: string;
@@ -73,22 +73,21 @@ export interface OrderItem {
   totalPrice: number;
 }
 
-// 客户类型定义
+// Customer types
 export interface Customer {
   id: string;
   name: string;
   email: string;
-  phone?: string;
-  company?: string;
+  phone?: string | null;
+  company?: string | null;
   country: string;
+  customerType?: "regular" | "vip" | "wholesale" | string;
   subscribed: boolean;
   registeredAt: Date;
-  lastOrderDate?: Date;
+  lastOrderDate?: Date | null;
 }
 
-
-
-// 联系消息类型定义
+// Contact message types
 export interface ContactMessage {
   id: string;
   firstName: string;
@@ -99,9 +98,7 @@ export interface ContactMessage {
   subject: string;
   message: string;
   newsletter: boolean;
-  status: 'new' | 'replied' | 'closed';
+  status: "new" | "replied" | "closed";
   createdAt: Date;
   updatedAt: Date;
 }
-
-
