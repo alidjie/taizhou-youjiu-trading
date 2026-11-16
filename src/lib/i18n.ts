@@ -17,7 +17,7 @@ export async function getLocale(): Promise<Locale> {
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://fsqpeuulaglnnwfyxndj.supabase.co";
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_27Jb43sOATe3CJlIEP-zVQ_-QFD6HOB";
 
-export async function applyTranslation<T extends Record<string, unknown>>(
+export async function applyTranslation<T extends object>(
   locale: Locale, entityType: string, entityId: string, source: T
 ): Promise<T> {
   if (locale === "en") return source;
@@ -36,7 +36,7 @@ export async function applyTranslation<T extends Record<string, unknown>>(
     });
     if (!response.ok) return source;
     const rows = await response.json() as Array<{ translated_content?: T }>;
-    return rows[0]?.translated_content ? { ...source, ...rows[0].translated_content } : source;
+    return rows[0]?.translated_content ? { ...source, ...rows[0].translated_content } as T : source;
   } catch {
     return source;
   }
