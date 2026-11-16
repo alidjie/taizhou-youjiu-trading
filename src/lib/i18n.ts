@@ -16,8 +16,8 @@ const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_pub
 export async function applyTranslation<T extends object>(locale: Locale, entityType: string, entityId: string, source: T): Promise<T> {
   if (locale === "en") return source;
   try {
-    const query = new URLSearchParams({ select: "translated_content", entity_type: \`eq.\${entityType}\`, entity_id: \`eq.\${entityId}\`, locale: \`eq.\${locale}\`, status: "eq.published", limit: "1" });
-    const response = await fetch(\`\${SUPABASE_URL}/rest/v1/site_translations?\${query}\`, { headers: { apikey: SUPABASE_KEY }, next: { revalidate: 60 } });
+    const query = new URLSearchParams({ select: "translated_content", entity_type: `eq.${entityType}`, entity_id: `eq.${entityId}`, locale: `eq.${locale}`, status: "eq.published", limit: "1" });
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/site_translations?${query}`, { headers: { apikey: SUPABASE_KEY }, next: { revalidate: 60 } });
     if (!response.ok) return source;
     const rows = await response.json() as Array<{ translated_content?: Partial<T> }>;
     return rows[0]?.translated_content ? { ...source, ...rows[0].translated_content } as T : source;
