@@ -24,9 +24,6 @@ button, input, textarea, select { font: inherit; }
 .product-visual { min-height:235px; background:#e8edef; background-size:cover; background-position:center; }
 .floating-quote { position:fixed; right:22px; bottom:22px; z-index:40; box-shadow:0 12px 35px rgba(0,0,0,.2); }
 @media(max-width:760px) { .container{width:min(100% - 32px,1200px)} .hero,.hero-grid{min-height:620px}.hero-grid{grid-template-columns:1fr;padding-block:70px}.hero{background-position:62% center}.site-header{height:auto;min-height:76px} }
-
-
-/* Responsive primary navigation: keep the menu inside the viewport on every phone size. */
 .site-header { position: sticky; top: 0; z-index: 100; }
 .site-header-inner { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .site-brand { display: flex; align-items: center; flex: 0 1 auto; min-width: 0; }
@@ -38,7 +35,6 @@ button, input, textarea, select { font: inherit; }
 .header-quote-link { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 14px; background: #b8ed36; color: #101923; font-size: 10px; font-weight: 900; letter-spacing: .06em; white-space: nowrap; }
 .mobile-menu-toggle { display: none; }
 .mobile-primary-nav, .mobile-menu-backdrop { display: none; }
-
 @media (max-width: 1023px) {
   .site-header { height: 76px; min-height: 76px; }
   .site-header-inner { width: calc(100% - 32px); min-height: 76px; }
@@ -57,13 +53,10 @@ button, input, textarea, select { font: inherit; }
   .mobile-menu-quote { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 52px; margin-top: 16px; padding: 0 16px; background: #b8ed36; color: #101923; font-size: 12px; font-weight: 900; letter-spacing: .08em; }
   .mobile-menu-backdrop { display: block; position: fixed; inset: 76px 0 0; width: 100%; height: calc(100dvh - 76px); padding: 0; border: 0; background: rgba(3,8,13,.48); z-index: 101; }
 }
-@media (max-width: 380px) {
-  .site-header-inner { width: calc(100% - 24px); gap: 8px; }
-  .site-brand-logo { width: 112px; }
-  .header-quote-link { min-height: 40px; padding: 0 8px; gap: 4px; font-size: 8px; letter-spacing: 0; }
-  .site-header-actions { gap: 7px; }
-  .mobile-menu-toggle { width: 42px; height: 42px; flex-basis: 42px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .mobile-primary-nav, .mobile-menu-toggle span { transition: none; }
-}
+@media (max-width: 380px) { .site-header-inner { width: calc(100% - 24px); gap: 8px; } .site-brand-logo { width: 112px; } .header-quote-link { min-height: 40px; padding: 0 8px; gap: 4px; font-size: 8px; letter-spacing: 0; } .site-header-actions { gap: 7px; } .mobile-menu-toggle { width: 42px; height: 42px; flex-basis: 42px; } }
+@media (prefers-reduced-motion: reduce) { .mobile-primary-nav, .mobile-menu-toggle span { transition: none; } }
+
+.youjiu-language-switcher select { min-height: 38px; max-width: 66px; padding: 0 5px; border: 1px solid rgba(255,255,255,.28); background: #17232e; color: white; font-size: 10px; font-weight: 800; border-radius: 2px; }
+html[dir="rtl"] body { direction: rtl; }
+html[dir="rtl"] .site-header-inner, html[dir="rtl"] .site-header-actions { direction: rtl; }
+html[dir="rtl"] .desktop-primary-nav { direction: rtl; }
