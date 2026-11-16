@@ -5,6 +5,7 @@ import Header from "../../../../components/Header";
 import Footer from "../../../../components/Footer";
 import { productCategories } from "../../../../data/company";
 import { getPublishedProduct } from "../../../../lib/cms";
+import { applyTranslation, getLocale } from "../../../../lib/i18n";
 
 export const dynamic = "force-dynamic";
 
