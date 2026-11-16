@@ -735,11 +735,13 @@ export default function AdminDashboard() {
       {error && <div role="alert" className="bg-red-50 border border-red-200 text-red-800 p-4 text-sm mb-5 whitespace-pre-wrap">{error}</div>}
       {notice && <div role="status" className="bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 text-sm mb-5">{notice}</div>}
 
-      <div className="flex flex-wrap gap-2 border-b border-slate-300 mb-6">
-        <button onClick={()=>setTab("products")} className={`px-5 py-3 text-sm font-bold border-b-2 ${tab==="products"?"border-[#7ca51c] text-[#101923]":"border-transparent text-slate-500"}`}>产品管理</button>
-        <button onClick={()=>setTab("content")} className={`px-5 py-3 text-sm font-bold border-b-2 ${tab==="content"?"border-[#7ca51c] text-[#101923]":"border-transparent text-slate-500"}`}>营销文案</button>
-        <button onClick={()=>setTab("inquiries")} className={`px-5 py-3 text-sm font-bold border-b-2 ${tab==="inquiries"?"border-[#7ca51c] text-[#101923]":"border-transparent text-slate-500"}`}>客户询盘</button>
-      </div>
+      <nav aria-label="后台管理菜单" className="-mx-4 px-4 sm:mx-0 sm:px-0 mb-6 border-b border-slate-300 overflow-x-auto">
+        <div className="flex min-w-max gap-2">
+          <button onClick={()=>setTab("products")} aria-current={tab==="products"?"page":undefined} className={`whitespace-nowrap px-4 sm:px-5 py-3 text-sm font-bold border-b-2 ${tab==="products"?"border-[#7ca51c] text-[#101923]":"border-transparent text-slate-500"}`}>产品管理</button>
+          <button onClick={()=>setTab("content")} aria-current={tab==="content"?"page":undefined} className={`whitespace-nowrap px-4 sm:px-5 py-3 text-sm font-bold border-b-2 ${tab==="content"?"border-[#7ca51c] text-[#101923]":"border-transparent text-slate-500"}`}>营销文案</button>
+          <button onClick={()=>setTab("inquiries")} aria-current={tab==="inquiries"?"page":undefined} className={`whitespace-nowrap px-4 sm:px-5 py-3 text-sm font-bold border-b-2 ${tab==="inquiries"?"border-[#7ca51c] text-[#101923]":"border-transparent text-slate-500"}`}>客户询盘</button>
+        </div>
+      </nav>
 
       {tab === "products" && <div className="grid xl:grid-cols-[360px_minmax(0,1fr)] gap-6 items-start">
         <section className="bg-white border border-slate-200">
