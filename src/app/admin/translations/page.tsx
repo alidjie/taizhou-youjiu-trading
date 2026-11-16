@@ -48,6 +48,24 @@ export default function TranslationAdmin() {
 
   useEffect(()=>{let alive=true;try{const saved=localStorage.getItem(SESSION);if(saved){const parsed=JSON.parse(saved);if(parsed.refresh_token) void refreshSession(parsed.refresh_token).then(access=>load(access)).catch(e=>{if(alive)setError(e.message);});}else setError("请先在主后台登录。");}catch{setError("无法读取后台登录会话，请先登录主后台。");}return()=>{alive=false;};},[]);
 
+  async function loadSource() {
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const table = entityType === "site_content" ? "site_content" : "products";
+      const select = entityType === "site_content" ? "content" : "name,model_code,short_description,description,specifications,features,certifications,seo_title,seo_description";
+      const filter = entityType === "site_content" ? `key=eq.${encodeURIComponent(entityId)}` : `id=eq.${encodeURIComponent(entityId)}`;
+      const response = await fetch(`${API}/rest/v1/${table}?select=${select}&${filter}&limit=1`, { headers: { apikey: KEY, Authorization: `Bearer ${token}` } });
+      if (!response.ok) throw new Error(await response.text());
+      const records = await response.json();
+      if (!records.length) throw new Error("没有找到该内容。请核对内容 ID，或直接在左侧粘贴英文 JSON。");
+      setSource(JSON.stringify(entityType === "site_content" ? records[0].content : records[0], null, 2));
+      setTranslated("");
+      setStatus("draft");
+      setMessage("已加载英文原文。现在可以执行 AI 自动翻译。");
+    } catch(e) { setError(e instanceof Error ? e.message : "读取英文原文失败"); }
+    finally { setBusy(false); }
+  }
+
   async function translate() {
     setBusy(true);setError("");setMessage("");
     try {
@@ -98,7 +116,7 @@ export default function TranslationAdmin() {
           <label className="text-xs font-bold">内容 ID<input value={entityId} onChange={e=>setEntityId(e.target.value)} placeholder="home.hero 或产品 UUID" className="block w-full mt-2 border p-3"/></label>
         </div>
         <div className="grid lg:grid-cols-2 gap-5 mt-6">
-          <label className="text-xs font-bold">英文源文案（JSON）<textarea rows={20} value={source} onChange={e=>setSource(e.target.value)} className="block w-full mt-2 border p-3 font-mono text-xs leading-5"/></label>
+          <label className="text-xs font-bold">英文源文案（JSON）<button type="button" onClick={loadSource} disabled={busy||!token} className="ml-3 border border-slate-300 px-3 py-1 text-[10px] disabled:opacity-40">从现有网站内容加载</button><textarea rows={20} value={source} onChange={e=>setSource(e.target.value)} className="block w-full mt-2 border p-3 font-mono text-xs leading-5"/></label>
           <label className="text-xs font-bold">AI 翻译结果（可直接人工修改）<textarea rows={20} dir={locale==="ar"?"rtl":"auto"} value={translated} onChange={e=>setTranslated(e.target.value)} placeholder="点击“AI 自动翻译”后显示结果" className="block w-full mt-2 border p-3 font-mono text-xs leading-5"/></label>
         </div>
         <div className="flex flex-wrap gap-3 mt-5">
