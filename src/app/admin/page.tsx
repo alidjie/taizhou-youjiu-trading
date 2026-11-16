@@ -93,6 +93,13 @@ type AuthResponse = {
   message?: string;
 };
 
+type XlsxSheet = Record<string, unknown>;
+type XlsxWorkbook = { SheetNames: string[]; Sheets: Record<string, XlsxSheet | undefined> };
+type XlsxApi = {
+  read: (data: ArrayBuffer, options: { type: "array" }) => XlsxWorkbook;
+  utils: { sheet_to_json: (sheet: XlsxSheet, options: { defval: string; raw: boolean }) => unknown[] };
+};
+
 const CMS_SESSION_KEY = "youjiu-cms-session";
 
 const apiUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://fsqpeuulaglnnwfyxndj.supabase.co";
@@ -591,7 +598,7 @@ export default function AdminDashboard() {
     setError("");
     setNotice("");
     try {
-      const xlsxWindow = window as Window & { XLSX?: any };
+      const xlsxWindow = window as Window & { XLSX?: XlsxApi };
       if (!xlsxWindow.XLSX) {
         await new Promise<void>((resolve, reject) => {
           const existing = document.querySelector<HTMLScriptElement>('script[data-youjiu-xlsx="true"]');
@@ -609,7 +616,7 @@ export default function AdminDashboard() {
           document.head.appendChild(script);
         });
       }
-      const XLSX = (window as Window & { XLSX?: any }).XLSX;
+      const XLSX = (window as Window & { XLSX?: XlsxApi }).XLSX;
       if (!XLSX) throw new Error("Excel 解析组件未就绪。");
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: "array" });
