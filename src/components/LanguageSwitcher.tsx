@@ -12,9 +12,9 @@ export default function LanguageSwitcher() {
     setLocale(match?.[1] || saved || "en");
   }, [pathname]);
   function changeLanguage(nextLocale: string) {
-    document.cookie = \`youjiu-locale=\${nextLocale}; path=/; max-age=31536000; samesite=lax\`;
+    document.cookie = `youjiu-locale=${nextLocale}; path=/; max-age=31536000; samesite=lax`;
     const clean = pathname.replace(localeRegex, "") || "/";
-    const destination = nextLocale === "en" ? clean : \`/\${nextLocale}\${clean === "/" ? "" : clean}\`;
+    const destination = nextLocale === "en" ? clean : `/${nextLocale}${clean === "/" ? "" : clean}`;
     window.location.assign(destination);
   }
   return <label className="youjiu-language-switcher" aria-label="Select website language"><span className="sr-only">Language</span><select value={locale} onChange={event => changeLanguage(event.target.value)}>{options.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>;
