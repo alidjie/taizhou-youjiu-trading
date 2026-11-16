@@ -40,6 +40,14 @@ type Product = {
   seo_description: string | null;
 };
 
+type BulkProductRow = {
+  name: string; slug: string; model_code: string; category: string;
+  hero_image: string; gallery: string; short_description: string; description: string;
+  specifications: string; features: string; certifications: string;
+  featured: boolean; published: boolean; sort_order: number;
+  seo_title: string; seo_description: string;
+};
+
 type ProductDraft = {
   id: string;
   name: string;
@@ -203,6 +211,10 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
   const [productDraft, setProductDraft] = useState<ProductDraft>(emptyProduct());
+  const [bulkRows, setBulkRows] = useState<BulkProductRow[]>([]);
+  const [bulkFileName, setBulkFileName] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   const [contentDraft, setContentDraft] = useState<ContentDraft | null>(null);
   const [filterCategory, setFilterCategory] = useState("all");
   const [search, setSearch] = useState("");
@@ -572,6 +584,122 @@ export default function AdminDashboard() {
     }
   }
 
+  async function readBulkWorkbook(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setError("");
+    setNotice("");
+    try {
+      const xlsxWindow = window as Window & { XLSX?: any };
+      if (!xlsxWindow.XLSX) {
+        await new Promise<void>((resolve, reject) => {
+          const existing = document.querySelector<HTMLScriptElement>('script[data-youjiu-xlsx="true"]');
+          if (existing) {
+            existing.addEventListener("load", () => resolve(), { once: true });
+            existing.addEventListener("error", () => reject(new Error("Excel 解析组件加载失败，请刷新页面后重试。")), { once: true });
+            return;
+          }
+          const script = document.createElement("script");
+          script.src = "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js";
+          script.async = true;
+          script.dataset.youjiuXlsx = "true";
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error("Excel 解析组件加载失败，请检查网络后重试。"));
+          document.head.appendChild(script);
+        });
+      }
+      const XLSX = (window as Window & { XLSX?: any }).XLSX;
+      if (!XLSX) throw new Error("Excel 解析组件未就绪。");
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const sheet = workbook.Sheets["Products"] || workbook.Sheets[workbook.SheetNames[0]];
+      if (!sheet) throw new Error("Excel 文件中没有可读取的工作表。");
+      const records = XLSX.utils.sheet_to_json(sheet, { defval: "", raw: false }) as Record<string, unknown>[];
+      const allowed = categories.map(item => item.value);
+      const parsed = records.filter(row => String(row.name || "").trim()).map((row, index) => {
+        const category = String(row.category || "electric-motorcycles").trim();
+        const slug = slugify(String(row.slug || row.name || ""));
+        if (!allowed.includes(category)) throw new Error(`第 ${index + 2} 行分类无效：${category}`);
+        if (!slug) throw new Error(`第 ${index + 2} 行缺少有效 slug。`);
+        const bool = (value: unknown) => ["true", "1", "yes", "是", "y"].includes(String(value).trim().toLowerCase());
+        const text = (value: unknown) => String(value ?? "").trim();
+        return {
+          name: text(row.name), slug, model_code: text(row.model_code), category,
+          hero_image: text(row.hero_image), gallery: text(row.gallery),
+          short_description: text(row.short_description), description: text(row.description),
+          specifications: text(row.specifications), features: text(row.features),
+          certifications: text(row.certifications), featured: bool(row.featured),
+          published: bool(row.published), sort_order: Number(row.sort_order) || 0,
+          seo_title: text(row.seo_title), seo_description: text(row.seo_description)
+        } as BulkProductRow;
+      });
+      if (!parsed.length) throw new Error("没有读到产品数据。请确认 Products 工作表包含 name 列，且至少填写一行产品。");
+      const seen = new Set<string>();
+      for (const row of parsed) {
+        if (seen.has(row.slug)) throw new Error(`Excel 中存在重复 slug：${row.slug}`);
+        seen.add(row.slug);
+      }
+      setBulkRows(parsed);
+      setBulkFileName(file.name);
+      setNotice(`已读取 ${parsed.length} 条产品记录。请核对预览后选择导入方式。`);
+    } catch (err) {
+      setBulkRows([]);
+      setError(err instanceof Error ? err.message : "Excel 文件读取失败。");
+    }
+  }
+
+  async function importBulkProducts(publishAll: boolean) {
+    if (!bulkRows.length) return;
+    if (publishAll && !window.confirm(`确认将 ${bulkRows.length} 条产品资料批量导入并立即发布到网站？`)) return;
+    setBulkBusy(true);
+    setError("");
+    setNotice("");
+    let created = 0;
+    let updated = 0;
+    try {
+      for (const row of bulkRows) {
+        const existing = products.find(product => product.slug === row.slug);
+        const specifications = parseSpecifications(row.specifications);
+        const heroImage = row.hero_image || "";
+        const payload = {
+          ...(existing ? { id: existing.id } : { id: crypto.randomUUID() }),
+          name: row.name.trim(), slug: row.slug, model_code: row.model_code || null,
+          category: row.category, image: heroImage || null, hero_image: heroImage || null,
+          gallery: lines(row.gallery), short_description: row.short_description || null,
+          description: row.description || null,
+          specs: Object.entries(specifications).map(([key, value]) => `${key}: ${value}`),
+          specifications, features: lines(row.features), certifications: lines(row.certifications),
+          featured: row.featured, published: publishAll ? true : false,
+          sort_order: row.sort_order, seo_title: row.seo_title || null,
+          seo_description: row.seo_description || null, updated_at: new Date().toISOString()
+        };
+        const response = await fetch(
+          existing ? `${apiUrl}/rest/v1/products?id=eq.${encodeURIComponent(existing.id)}` : `${apiUrl}/rest/v1/products`,
+          {
+            method: existing ? "PATCH" : "POST",
+            headers: { ...jsonHeaders(accessToken), Prefer: "return=minimal" },
+            body: JSON.stringify(payload)
+          }
+        );
+        if (!response.ok) {
+          const detail = await response.text();
+          throw new Error(`导入在产品「${row.name}」处中止：${detail || response.statusText}`);
+        }
+        if (existing) updated += 1; else created += 1;
+      }
+      await loadAll(accessToken);
+      setBulkRows([]);
+      setBulkFileName("");
+      setNotice(`批量导入完成：新增 ${created} 条，更新 ${updated} 条。${publishAll ? " 已全部发布。" : " 已全部保存为草稿，可在产品目录中检查后发布。"}`);
+    } catch (err) {
+      await loadAll(accessToken);
+      setError(err instanceof Error ? err.message : "批量导入失败。已完成的记录已保存，请修正问题后重新导入。");
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
   async function saveProduct(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -746,6 +874,25 @@ export default function AdminDashboard() {
       {tab === "products" && <div className="grid xl:grid-cols-[360px_minmax(0,1fr)] gap-6 items-start">
         <section className="bg-white border border-slate-200">
           <div className="p-5 border-b border-slate-200 flex items-center justify-between gap-3"><div><h2 className="font-black text-lg">产品目录</h2><p className="text-xs text-slate-500 mt-1">{filteredProducts.length} 条记录</p></div><button onClick={()=>{setProductDraft(emptyProduct());setError("");setNotice("");}} className="bg-[#101923] text-white text-xs font-bold px-3 py-3">＋ 新增产品</button></div>
+          <div className="mx-4 mt-4 border border-dashed border-slate-300 bg-slate-50 p-4">
+            <div className="font-bold text-sm">Excel 批量导入 / 批量发布</div>
+            <p className="text-[11px] text-slate-500 mt-1 leading-5">支持 .xlsx / .xls。每行一个产品；先上传产品图片并把图片 URL 填入表格，再导入产品资料。</p>
+            <label className="mt-3 inline-flex cursor-pointer items-center bg-[#101923] px-3 py-2.5 text-xs font-bold text-white">
+              选择 Excel 文件
+              <input type="file" accept=".xlsx,.xls" onChange={readBulkWorkbook} disabled={bulkBusy} className="hidden" />
+            </label>
+            {bulkFileName && <div className="mt-2 text-[11px] text-slate-600 break-all">{bulkFileName} · {bulkRows.length} 条待导入</div>}
+            {bulkRows.length > 0 && <>
+              <div className="mt-3 max-h-40 overflow-auto border border-slate-200 bg-white text-[11px]">
+                {bulkRows.slice(0, 8).map((row, index) => <div key={row.slug} className="flex justify-between gap-2 border-b border-slate-100 px-2 py-2"><span className="truncate">{index + 1}. {row.name}</span><span className="shrink-0 text-slate-500">{row.category}</span></div>)}
+                {bulkRows.length > 8 && <div className="px-2 py-2 text-slate-500">另有 {bulkRows.length - 8} 条…</div>}
+              </div>
+              <div className="mt-3 grid grid-cols-1 gap-2">
+                <button type="button" onClick={() => void importBulkProducts(false)} disabled={bulkBusy} className="bg-white border border-slate-300 px-3 py-2.5 text-xs font-bold disabled:opacity-50">{bulkBusy ? "处理中…" : "批量导入为草稿"}</button>
+                <button type="button" onClick={() => void importBulkProducts(true)} disabled={bulkBusy} className="bg-[#b8ed36] px-3 py-2.5 text-xs font-black text-[#101923] disabled:opacity-50">{bulkBusy ? "处理中…" : "批量导入并发布"}</button>
+              </div>
+            </>}
+          </div>
           <div className="p-4 space-y-3"><input value={search} onChange={event=>setSearch(event.target.value)} placeholder="搜索产品名称、型号或 Slug" className="w-full border border-slate-300 px-3 py-3 text-sm"/><select value={filterCategory} onChange={event=>setFilterCategory(event.target.value)} className="w-full border border-slate-300 px-3 py-3 text-sm bg-white"><option value="all">全部产品分类</option>{categories.map(category=><option key={category.value} value={category.value}>{category.label}</option>)}</select></div>
           <div className="divide-y divide-slate-100 max-h-[760px] overflow-y-auto">{filteredProducts.map(product=><div key={product.id} className={`p-4 flex gap-3 ${productDraft.id===product.id?"bg-[#f4f7e9]":""}`}><div className="w-20 h-20 shrink-0 bg-slate-100">{(product.hero_image||product.image)?<img src={product.hero_image||product.image||""} alt={product.name} className="w-full h-full object-cover"/>:<div className="w-full h-full flex items-center justify-center text-[9px] text-slate-400">NO IMAGE</div>}</div><div className="min-w-0 flex-1"><div className="font-bold text-sm truncate">{product.name}</div><div className="text-[10px] text-slate-500 mt-1">{product.model_code||product.slug}</div><div className="flex gap-2 mt-2"><span className={`text-[9px] px-2 py-1 ${product.published?"bg-emerald-50 text-emerald-700":"bg-slate-100 text-slate-500"}`}>{product.published?"已发布":"草稿"}</span>{product.featured&&<span className="text-[9px] px-2 py-1 bg-[#eff5d8] text-[#607f12]">推荐</span>}</div><button onClick={()=>editProduct(product)} className="text-xs font-bold underline mt-3">编辑产品 →</button></div></div>)}{!filteredProducts.length&&<div className="p-8 text-sm text-slate-500 text-center">暂时没有产品记录。点击“新增产品”开始建立目录。</div>}</div>
         </section>
