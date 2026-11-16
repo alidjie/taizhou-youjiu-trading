@@ -21,16 +21,23 @@ create index if not exists site_translations_public_lookup
 alter table public.site_translations enable row level security;
 
 drop policy if exists "Published translations are publicly readable" on public.site_translations;
-create policy "Published translations are publicly readable"
-  on public.site_translations for select
-  using (status = 'published');
-
 drop policy if exists "CMS admins manage translations" on public.site_translations;
-create policy "CMS admins manage translations"
-  on public.site_translations for all
-  to authenticated
-  using (exists (select 1 from public.cms_admins a where a.user_id = auth.uid()))
-  with check (exists (select 1 from public.cms_admins a where a.user_id = auth.uid()));
+create policy "Read published translations or own CMS drafts"
+  on public.site_translations for select to anon, authenticated
+  using (
+    status = 'published'
+    or exists (select 1 from public.cms_admins a where a.user_id = (select auth.uid()))
+  );
+create policy "CMS admins insert translations"
+  on public.site_translations for insert to authenticated
+  with check (exists (select 1 from public.cms_admins a where a.user_id = (select auth.uid())));
+create policy "CMS admins update translations"
+  on public.site_translations for update to authenticated
+  using (exists (select 1 from public.cms_admins a where a.user_id = (select auth.uid())))
+  with check (exists (select 1 from public.cms_admins a where a.user_id = (select auth.uid())));
+create policy "CMS admins delete translations"
+  on public.site_translations for delete to authenticated
+  using (exists (select 1 from public.cms_admins a where a.user_id = (select auth.uid())));
 
 grant select on public.site_translations to anon, authenticated;
 grant insert, update, delete on public.site_translations to authenticated;
