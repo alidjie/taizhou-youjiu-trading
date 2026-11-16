@@ -8,7 +8,7 @@ const localeNames: Record<string, string> = {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "");
+    const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
     if (!token) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
     const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
