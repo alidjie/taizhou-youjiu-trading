@@ -51,14 +51,26 @@ export default function TranslationAdmin() {
   async function loadSource() {
     setBusy(true); setError(""); setMessage("");
     try {
-      const table = entityType === "site_content" ? "site_content" : "products";
-      const select = entityType === "site_content" ? "content" : "name,model_code,short_description,description,specifications,features,certifications,seo_title,seo_description";
-      const filter = entityType === "site_content" ? `key=eq.${encodeURIComponent(entityId)}` : `id=eq.${encodeURIComponent(entityId)}`;
-      const response = await fetch(`${API}/rest/v1/${table}?select=${select}&${filter}&limit=1`, { headers: { apikey: KEY, Authorization: `Bearer ${token}` } });
-      if (!response.ok) throw new Error(await response.text());
-      const records = await response.json();
-      if (!records.length) throw new Error("没有找到该内容。请核对内容 ID，或直接在左侧粘贴英文 JSON。");
-      setSource(JSON.stringify(entityType === "site_content" ? records[0].content : records[0], null, 2));
+      if (entityType === "category") {
+        const categorySource: Record<string, Record<string, string>> = {
+          "electric-motorcycles": { name: "Electric Motorcycles", description: "Electric motorcycle platforms for urban commuting, utility transport and regional distribution." },
+          "electric-bicycles": { name: "Electric Bicycles", description: "Electric bicycle and e-mobility solutions for daily use, fleet applications and dealer networks." },
+          "electric-motors": { name: "Electric Motors", description: "Electric traction motor and BLDC solutions for two-wheelers and other electric mobility applications." },
+          "suspension-systems": { name: "Suspension Systems", description: "Motorcycle and automotive shock absorbers and suspension components for OEM and aftermarket supply." }
+        };
+        const sourceRecord = categorySource[entityId];
+        if (!sourceRecord) throw new Error("未知产品分类 ID。");
+        setSource(JSON.stringify(sourceRecord, null, 2));
+      } else {
+        const table = entityType === "site_content" ? "site_content" : "products";
+        const select = entityType === "site_content" ? "content" : "name,model_code,short_description,description,specifications,features,certifications,seo_title,seo_description";
+        const filter = entityType === "site_content" ? `key=eq.${encodeURIComponent(entityId)}` : `id=eq.${encodeURIComponent(entityId)}`;
+        const response = await fetch(`${API}/rest/v1/${table}?select=${select}&${filter}&limit=1`, { headers: { apikey: KEY, Authorization: `Bearer ${token}` } });
+        if (!response.ok) throw new Error(await response.text());
+        const records = await response.json();
+        if (!records.length) throw new Error("没有找到该内容。请核对内容 ID，或直接在左侧粘贴英文 JSON。");
+        setSource(JSON.stringify(entityType === "site_content" ? records[0].content : records[0], null, 2));
+      }
       setTranslated("");
       setStatus("draft");
       setMessage("已加载英文原文。现在可以执行 AI 自动翻译。");
