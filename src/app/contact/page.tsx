@@ -3,11 +3,12 @@ import Footer from "../../components/Footer";
 import Link from "next/link";
 import { companyInfo } from "../../data/company";
 import { getCmsBlock } from "../../lib/cms";
+import { applyTranslation, getLocale } from "../../lib/i18n";
 
 export const dynamic = "force-dynamic";
 
 export default async function Contact() {
-  const [heroBlock, introBlock] = await Promise.all([
+  const locale = await getLocale();\n  const [heroBlock, introBlock] = await Promise.all([
     getCmsBlock("contact.hero"),
     getCmsBlock("contact.intro")
   ]);
@@ -15,7 +16,7 @@ export default async function Contact() {
     eyebrow: "CONTACT & SUPPORT",
     headline: "LET'S TALK BUSINESS.",
     body: "Tell us what you are sourcing and where you plan to sell.",
-    ...(heroBlock?.content ?? {})
+    ...heroContent
   };
   const intro = {
     eyebrow: "INTERNATIONAL SALES",
@@ -25,7 +26,7 @@ export default async function Contact() {
     primary_href: "/inquiry",
     secondary_headline: "Send your requirements",
     secondary_body: "Include product category, estimated order quantity, destination country and any technical requirements.",
-    ...(introBlock?.content ?? {})
+    ...introContent
   };
 
   return <><Header/><main>
