@@ -4,6 +4,7 @@ import Header from "../../../components/Header";
 import Footer from "../../../components/Footer";
 import { productCategories } from "../../../data/company";
 import { getCmsBlock, getPublishedProducts } from "../../../lib/cms";
+import { applyTranslation, getLocale } from "../../../lib/i18n";
 
 const categoryImages: Record<string, string> = {
   "electric-motorcycles": "https://images.unsplash.com/photo-1558981806-ec527fa84c39?auto=format&fit=crop&w=1600&q=85",
@@ -26,17 +27,18 @@ export default async function CategoryPage({ params }: { params: Promise<{ categ
   const currentCategory = productCategories.find(item => item.id === category);
   if (!currentCategory) notFound();
 
-  const [block, products] = await Promise.all([
+  const locale = await getLocale();
+  const [block, rawProducts] = await Promise.all([
     getCmsBlock(`category.${category}`),
     getPublishedProducts(category)
   ]);
-  const fallback = fallbackCopy[category] || { headline: currentCategory.name, body: currentCategory.description };
+  const fallback = fallbackCopy[category] || { headline: localizedCategory.name, body: localizedCategory.description };
   const copy = {
     eyebrow: "YOUJIU PRODUCT RANGE",
     ...fallback,
-    ...(block?.content ?? {})
+    ...blockContent
   };
-  const image = block?.content?.image_url || categoryImages[category] || "";
+  const image = blockContent.image_url || categoryImages[category] || "";
 
   return <><Header/><main>
     <section className="bg-[#101923] text-white py-16"><div className="container"><Link href="/products" className="text-xs text-slate-400">PRODUCTS /</Link><div className="eyebrow !text-[#b8ed36] mt-8 mb-4">{copy.eyebrow}</div><h1 className="text-4xl md:text-6xl font-black whitespace-pre-line">{copy.headline}</h1><p className="text-slate-400 max-w-2xl leading-7 mt-5 whitespace-pre-line">{copy.body}</p></div></section>
