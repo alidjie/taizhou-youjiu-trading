@@ -16,13 +16,13 @@ export default function TranslationAdmin() {
   const [locale,setLocale]=useState("fr");
   const [entityType,setEntityType]=useState("site_content");
   const [entityId,setEntityId]=useState("home.hero");
-  const [source,setSource]=useState('{
+  const [source,setSource]=useState(\`{
   "eyebrow": "YOUR GLOBAL MOBILITY & COMPONENTS PARTNER",
   "headline_before": "MOVE THE",
   "headline_accent": "FUTURE",
   "headline_after": "FORWARD.",
   "body": "Electric mobility products and industrial components for global distributors and OEM partners."
-}');
+}\`);
   const [translated,setTranslated]=useState("");
   const [status,setStatus]=useState("draft");
   const [busy,setBusy]=useState(false);
