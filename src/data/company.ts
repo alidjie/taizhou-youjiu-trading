@@ -3,7 +3,7 @@ export const companyInfo = {
   legalName: "Taizhou Youjiu Trading Co., Ltd.",
   shortName: "YOUJIU",
   domain: "almcp.com",
-  email: "sales@almcp.com",
+  email: "alidjie@gmail.com",
   phone: "Contact our international sales team",
   whatsapp: "",
   address: "Taizhou, Zhejiang Province, China",
