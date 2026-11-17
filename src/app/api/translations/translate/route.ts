@@ -8,32 +8,42 @@ const localeNames: Record<string, string> = {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "");
-    if (!token) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
+    const authorization = request.headers.get("authorization") || "";
+    const token = authorization.replace(/^Bearer\s+/i, "").trim();
+    if (!token || token === authorization) {
+      return NextResponse.json({ error: "Authentication token missing or malformed. Please sign in to the CMS again." }, { status: 401 });
+    }
 
     const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` },
       cache: "no-store"
     });
-    if (!userResponse.ok) return NextResponse.json({ error: "Your admin session has expired." }, { status: 401 });
+    if (!userResponse.ok) {
+      return NextResponse.json({ error: "Your admin session is invalid or expired. Please sign in to the CMS again." }, { status: 401 });
+    }
     const user = await userResponse.json() as { id?: string };
     if (!user.id) return NextResponse.json({ error: "Unable to verify account." }, { status: 401 });
 
-    const adminResponse = await fetch(`${SUPABASE_URL}/rest/v1/cms_admins?select=user_id&user_id=eq.${user.id}&limit=1`, {
+    const adminResponse = await fetch(`${SUPABASE_URL}/rest/v1/cms_admins?select=user_id&user_id=eq.${encodeURIComponent(user.id)}&limit=1`, {
       headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${token}` },
       cache: "no-store"
     });
-    const admins = adminResponse.ok ? await adminResponse.json() as Array<{ user_id: string }> : [];
+    if (!adminResponse.ok) {
+      return NextResponse.json({ error: "Unable to verify CMS administrator permission. Please check your admin account." }, { status: 403 });
+    }
+    const admins = await adminResponse.json() as Array<{ user_id: string }>;
     if (!admins.length) return NextResponse.json({ error: "CMS administrator permission required." }, { status: 403 });
 
     const body = await request.json() as { locale?: string; source?: unknown };
     const locale = body.locale || "";
     if (!localeNames[locale]) return NextResponse.json({ error: "Unsupported target language." }, { status: 400 });
-    if (!body.source || typeof body.source !== "object") return NextResponse.json({ error: "Source content must be a JSON object." }, { status: 400 });
+    if (!body.source || typeof body.source !== "object" || Array.isArray(body.source)) {
+      return NextResponse.json({ error: "Source content must be a JSON object." }, { status: 400 });
+    }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: "GEMINI_API_KEY is not configured in Vercel. Add it as a server-side environment variable and redeploy." }, { status: 503 });
+      return NextResponse.json({ error: "GEMINI_API_KEY is not configured in Vercel Production. Add it as a server-side environment variable and redeploy." }, { status: 503 });
     }
 
     const model = process.env.GEMINI_TRANSLATION_MODEL || "gemini-2.5-flash-lite";
