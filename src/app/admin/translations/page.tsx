@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { productCategories } from "../../../data/company";
 
 const API = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://fsqpeuulaglnnwfyxndj.supabase.co";
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_27Jb43sOATe3CJlIEP-zVQ_-QFD6HOB";
@@ -52,15 +53,11 @@ export default function TranslationAdmin() {
     setBusy(true); setError(""); setMessage("");
     try {
       if (entityType === "category") {
-        const categorySource: Record<string, Record<string, string>> = {
-          "electric-motorcycles": { name: "Electric Motorcycles", description: "Electric motorcycle platforms for urban commuting, utility transport and regional distribution." },
-          "electric-bicycles": { name: "Electric Bicycles", description: "Electric bicycle and e-mobility solutions for daily use, fleet applications and dealer networks." },
-          "electric-motors": { name: "Electric Motors", description: "Electric traction motor and BLDC solutions for two-wheelers and other electric mobility applications." },
-          "suspension-systems": { name: "Suspension Systems", description: "Motorcycle and automotive shock absorbers and suspension components for OEM and aftermarket supply." }
-        };
-        const sourceRecord = categorySource[entityId];
-        if (!sourceRecord) throw new Error("未知产品分类 ID。");
-        setSource(JSON.stringify(sourceRecord, null, 2));
+        const sourceRecord = productCategories.find(category => category.id === entityId);
+        if (!sourceRecord) {
+          throw new Error("产品分类 ID 不正确。请从内容 ID 下拉列表选择有效分类，或切换到“页面文案模块”。");
+        }
+        setSource(JSON.stringify({ name: sourceRecord.name, description: sourceRecord.description, image: sourceRecord.image }, null, 2));
       } else {
         const table = entityType === "site_content" ? "site_content" : "products";
         const select = entityType === "site_content" ? "content" : "name,model_code,short_description,description,specifications,features,certifications,seo_title,seo_description";
@@ -132,8 +129,8 @@ export default function TranslationAdmin() {
         <p className="text-sm text-slate-500 mt-2">先提供英文源文案 JSON。AI 生成目标语言草稿，人工校对后再发布。字段名称、型号、URL 和技术参数会保留。</p>
         <div className="grid md:grid-cols-3 gap-4 mt-6">
           <label className="text-xs font-bold">目标语言<select value={locale} onChange={e=>setLocale(e.target.value)} className="block w-full mt-2 border p-3 bg-white">{languages.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
-          <label className="text-xs font-bold">内容类型<select value={entityType} onChange={e=>setEntityType(e.target.value)} className="block w-full mt-2 border p-3 bg-white"><option value="site_content">页面文案模块</option><option value="product">产品详情</option><option value="category">产品分类</option></select></label>
-          <label className="text-xs font-bold">内容 ID<input value={entityId} onChange={e=>setEntityId(e.target.value)} placeholder="home.hero 或产品 UUID" className="block w-full mt-2 border p-3"/></label>
+          <label className="text-xs font-bold">内容类型<select value={entityType} onChange={e=>{const next=e.target.value;setEntityType(next);setEntityId(next==="category"?productCategories[0].id:next==="site_content"?"home.hero":"");}} className="block w-full mt-2 border p-3 bg-white"><option value="site_content">页面文案模块</option><option value="product">产品详情</option><option value="category">产品分类</option></select></label>
+          <label className="text-xs font-bold">内容 ID{entityType==="category"?<select value={entityId} onChange={e=>setEntityId(e.target.value)} className="block w-full mt-2 border p-3 bg-white">{productCategories.map(category=><option key={category.id} value={category.id}>{category.name} ({category.id})</option>)}</select>:<input value={entityId} onChange={e=>setEntityId(e.target.value)} placeholder={entityType==="site_content"?"例如 home.hero":"请输入产品 UUID"} className="block w-full mt-2 border p-3"/>}</label>
         </div>
         <div className="grid lg:grid-cols-2 gap-5 mt-6">
           <label className="text-xs font-bold">英文源文案（JSON）<button type="button" onClick={loadSource} disabled={busy||!token} className="ml-3 border border-slate-300 px-3 py-1 text-[10px] disabled:opacity-40">从现有网站内容加载</button><textarea rows={20} value={source} onChange={e=>setSource(e.target.value)} className="block w-full mt-2 border p-3 font-mono text-xs leading-5"/></label>
