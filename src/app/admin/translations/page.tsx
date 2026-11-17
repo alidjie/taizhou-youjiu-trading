@@ -82,7 +82,15 @@ export default function TranslationAdmin() {
     setBusy(true);setError("");setMessage("");
     try {
       const parsed=JSON.parse(source);
-      const response=await fetch("/api/translations/translate",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify({locale,source:parsed})});
+      const saved=localStorage.getItem(SESSION);
+      const refreshToken=saved ? (JSON.parse(saved) as {refresh_token?:string}).refresh_token : undefined;
+      if(!refreshToken) throw new Error("后台登录状态不存在，请返回主后台重新登录。");
+      const freshAccessToken=await refreshSession(refreshToken);
+      const response=await fetch("/api/translations/translate",{
+        method:"POST",
+        headers:{"Content-Type":"application/json",Authorization:`Bearer ${freshAccessToken}`},
+        body:JSON.stringify({locale,source:parsed,accessToken:freshAccessToken})
+      });
       const result=await response.json();
       if(!response.ok) throw new Error(result.error||"自动翻译失败");
       setTranslated(JSON.stringify(result.translated,null,2));
