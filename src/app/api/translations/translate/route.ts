@@ -8,7 +8,7 @@ const localeNames: Record<string, string> = {
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
+    const token = request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "");
     if (!token) return NextResponse.json({ error: "Authentication required." }, { status: 401 });
 
     const userResponse = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
@@ -30,27 +30,45 @@ export async function POST(request: NextRequest) {
     const locale = body.locale || "";
     if (!localeNames[locale]) return NextResponse.json({ error: "Unsupported target language." }, { status: 400 });
     if (!body.source || typeof body.source !== "object") return NextResponse.json({ error: "Source content must be a JSON object." }, { status: 400 });
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: "OPENAI_API_KEY is not configured in Vercel. Add it as a server-side environment variable to enable AI translation." }, { status: 503 });
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: "GEMINI_API_KEY is not configured in Vercel. Add it as a server-side environment variable and redeploy." }, { status: 503 });
     }
 
-    const aiResponse = await fetch("https://api.openai.com/v1/responses", {
+    const model = process.env.GEMINI_TRANSLATION_MODEL || "gemini-2.5-flash-lite";
+    const instruction = "You are a professional website translator for an international B2B electric mobility and industrial components company. Translate all human-readable string values into " + localeNames[locale] + ". Preserve every JSON key, nesting, number, boolean, URL, SKU, model code, measurement, technical unit, HTML tag and placeholder exactly. Do not translate brand names or alter technical specifications. Do not add claims. Return only a valid JSON object.";
+    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}`, "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: process.env.TRANSLATION_MODEL || "gpt-4.1-mini",
-        input: [
-          { role: "system", content: "Translate the JSON content for a professional international electric mobility and industrial components B2B website. Translate all human-readable string values into " + localeNames[locale] + ". Preserve every JSON key, nesting, number, boolean, URL, SKU, model code, measurement, technical unit, HTML tag and placeholder exactly. Do not add claims or alter technical specifications. Return valid JSON only." },
-          { role: "user", content: JSON.stringify(body.source) }
-        ],
-        text: { format: { type: "json_object" } }
-      })
+        systemInstruction: { parts: [{ text: instruction }] },
+        contents: [{ role: "user", parts: [{ text: JSON.stringify(body.source) }] }],
+        generationConfig: { responseMimeType: "application/json", temperature: 0.2 }
+      }),
+      cache: "no-store"
     });
-    const result = await aiResponse.json() as { output_text?: string; error?: { message?: string } };
-    if (!aiResponse.ok) return NextResponse.json({ error: result.error?.message || "Translation provider request failed." }, { status: 502 });
-    if (!result.output_text) return NextResponse.json({ error: "The translation provider returned no JSON output." }, { status: 502 });
-    const translated = JSON.parse(result.output_text);
-    return NextResponse.json({ translated });
+
+    const result = await aiResponse.json() as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+      error?: { message?: string };
+    };
+    if (!aiResponse.ok) {
+      return NextResponse.json({ error: result.error?.message || "Gemini translation request failed." }, { status: 502 });
+    }
+    const output = result.candidates?.[0]?.content?.parts?.map(part => part.text || "").join("").trim();
+    if (!output) return NextResponse.json({ error: "Gemini returned no translation text." }, { status: 502 });
+
+    let translated: unknown;
+    try {
+      translated = JSON.parse(output);
+    } catch {
+      return NextResponse.json({ error: "Gemini returned invalid JSON. Please retry or reduce the source content size." }, { status: 502 });
+    }
+    if (!translated || typeof translated !== "object" || Array.isArray(translated)) {
+      return NextResponse.json({ error: "Gemini returned an invalid JSON object." }, { status: 502 });
+    }
+    return NextResponse.json({ translated, provider: "Google Gemini", model });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Translation failed.";
     return NextResponse.json({ error: message }, { status: 500 });
