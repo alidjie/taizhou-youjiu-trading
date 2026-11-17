@@ -6,10 +6,11 @@ const localeNames: Record<string, string> = { fr: "French", de: "German", es: "S
 
 export async function POST(request: NextRequest) {
   try {
+    const body = await request.json() as { locale?: string; source?: unknown; accessToken?: string };
     const authorization = request.headers.get("authorization") || "";
-    const match = authorization.match(/^Bearer\s+(.+)$/i);
-    const token = match?.[1]?.trim();
-    if (!token) return NextResponse.json({ error: "CMS 登录凭证缺失，请返回主后台重新登录后再试。" }, { status: 401 });
+    const match = authorization.match(/^Bearer\\s+(.+)$/i);
+    const token = match?.[1]?.trim() || body.accessToken?.trim();
+    if (!token) return NextResponse.json({ error: "翻译请求未收到登录凭证。请退出 YOUJIU 后台重新登录，再重试。" }, { status: 401 });
 
     // Validate the access token through the CMS admin table and its RLS policy.
     // This avoids a separate Auth user lookup that was rejecting valid CMS sessions.
