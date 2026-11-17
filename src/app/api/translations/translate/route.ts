@@ -7,7 +7,7 @@ const localeNames: Record<string, string> = { fr: "French", de: "German", es: "S
 export async function POST(request: NextRequest) {
   try {
     const authorization = request.headers.get("authorization") || "";
-    const match = authorization.match(/^Bearer\\s+(.+)$/i);
+    const match = authorization.match(/^Bearer\s+(.+)$/i);
     const token = match?.[1]?.trim();
     if (!token) return NextResponse.json({ error: "CMS 登录凭证缺失，请返回主后台重新登录后再试。" }, { status: 401 });
 
