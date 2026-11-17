@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+
 const locales = ["en", "fr", "de", "es", "ar", "ru", "pt"] as const;
-const localePattern = new RegExp("^/(" + locales.join("|") + ")(?=/|$)", "i");
-function detectLocale(request: NextRequest) {
+type Locale = typeof locales[number];
+const localePattern = /^\/(en|fr|de|es|ar|ru|pt)(?=\/|$)/i;
+
+function detectLocale(request: NextRequest): Locale {
   const accepted = request.headers.get("accept-language") || "";
   for (const language of accepted.split(",").map(value => value.trim().split(";")[0].toLowerCase())) {
     const match = locales.find(locale => language === locale || language.startsWith(locale + "-"));
@@ -9,29 +12,37 @@ function detectLocale(request: NextRequest) {
   }
   return "en";
 }
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  if (pathname.startsWith("/admin") || pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.includes(".")) return NextResponse.next();
+  if (pathname.startsWith("/admin") || pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname === "/favicon.ico" || /\.[^/]+$/.test(pathname)) {
+    return NextResponse.next();
+  }
+
   const match = pathname.match(localePattern);
   if (match) {
-    const locale = match[1].toLowerCase();
+    const locale = match[1].toLowerCase() as Locale;
+    const rewrittenPath = pathname.replace(localePattern, "") || "/";
     const destination = request.nextUrl.clone();
-    destination.pathname = pathname.replace(localePattern, "") || "/";
+    destination.pathname = rewrittenPath;
     const headers = new Headers(request.headers);
     headers.set("x-youjiu-locale", locale);
     const response = NextResponse.rewrite(destination, { request: { headers } });
     response.cookies.set("youjiu-locale", locale, { path: "/", maxAge: 31536000, sameSite: "lax" });
     return response;
   }
+
   const saved = request.cookies.get("youjiu-locale")?.value;
-  const locale = saved && locales.includes(saved as typeof locales[number]) ? saved : detectLocale(request);
+  const locale = saved && locales.includes(saved as Locale) ? saved as Locale : detectLocale(request);
   if (locale !== "en") {
     const destination = request.nextUrl.clone();
     destination.pathname = "/" + locale + (pathname === "/" ? "" : pathname);
     return NextResponse.redirect(destination);
   }
+
   const headers = new Headers(request.headers);
   headers.set("x-youjiu-locale", "en");
   return NextResponse.next({ request: { headers } });
 }
-export const config = { matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\\\..*).*)"] };
+
+export const config = { matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"] };
