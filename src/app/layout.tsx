@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: { default: "YOUJIU | Electric Mobility & OEM Components", template: "%s | YOUJIU" },
   description: "Electric motorcycles, electric bicycles, BLDC motors and suspension systems for global distributors, importers and OEM partners.",
   keywords: ["electric motorcycles", "electric bicycles", "electric motorcycle manufacturer", "BLDC motors", "motorcycle shock absorbers", "OEM electric mobility supplier"],
+  verification: {
+    yandex: "2d49a12f9270e19f"
+  },
   openGraph: {
     type: "website",
     siteName: "YOUJIU",
