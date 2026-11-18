@@ -3,6 +3,7 @@
 import Link from "next/link";
 import BlogManager from "../../components/admin/BlogManager";
 import FAQManager from "../../components/admin/FAQManager";
+import { convertImageToWebP, formatImageCompression } from "../../lib/image-upload";
 import { useEffect, useMemo, useState } from "react";
 
 type Inquiry = {
@@ -513,7 +514,10 @@ export default function AdminDashboard() {
     setError("");
     try {
       const uploadedUrls: string[] = [];
+      let originalBytes = 0;
+      let compressedBytes = 0;
       for (const file of files) {
+        originalBytes += file.size;
         if (!file.type.startsWith("image/")) throw new Error(`${file.name} 不是图片文件。`);
         if (file.size > 12 * 1024 * 1024) throw new Error(`${file.name} 超过 12MB 限制。`);
         const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
@@ -540,7 +544,7 @@ export default function AdminDashboard() {
         hero_image: current.hero_image || uploadedUrls[0],
         gallery_text: [...lines(current.gallery_text), ...uploadedUrls].join("\n")
       }));
-      setNotice(`成功上传 ${uploadedUrls.length} 张图片。保存产品后即会显示在网站上。`);
+      setNotice(`成功上传 ${uploadedUrls.length} 张 WebP 图片；${formatImageCompression(originalBytes, compressedBytes)}。保存产品后即会显示在网站上。`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "图片上传失败。");
     } finally {
@@ -552,15 +556,6 @@ export default function AdminDashboard() {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file || !contentDraft) return;
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/avif"];
-    if (!allowedTypes.includes(file.type)) {
-      setError("页面图片仅支持 JPG、PNG、WebP 或 AVIF 格式。");
-      return;
-    }
-    if (file.size > 12 * 1024 * 1024) {
-      setError("页面图片不能超过 12MB。");
-      return;
-    }
     setUploading(true);
     setError("");
     try {
@@ -585,7 +580,7 @@ export default function AdminDashboard() {
       setContentDraft(current => current
         ? { ...current, content: { ...current.content, [fieldKey]: publicUrl } }
         : current);
-      setNotice("页面图片上传成功。点击“保存文案”后，图片地址才会应用到网站页面。");
+      setNotice("页面图片已压缩并转换为 WebP（${formatImageCompression(file.size, webpFile.size)}）。点击“保存文案”后应用到网站页面。");
     } catch (err) {
       setError(err instanceof Error ? err.message : "页面图片上传失败。");
     } finally {
@@ -919,7 +914,7 @@ export default function AdminDashboard() {
             </div>
 
             <div className="mt-7 border-t border-slate-200 pt-6">
-              <div className="flex flex-wrap justify-between items-center gap-3"><div><h3 className="font-black">产品图片</h3><p className="text-xs text-slate-500 mt-1">支持 JPG / PNG / WebP / AVIF，单张不超过 12MB。</p></div><label className="inline-flex items-center bg-[#101923] text-white text-xs font-bold px-4 py-3 cursor-pointer">{uploading?"正在上传...":"上传图片"}<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple disabled={uploading} onChange={uploadProductImages} className="hidden"/></label></div>
+              <div className="flex flex-wrap justify-between items-center gap-3"><div><h3 className="font-black">产品图片</h3><p className="text-xs text-slate-500 mt-1">支持 JPG / PNG / WebP / AVIF，上传时自动压缩并转换为 WebP（原图最大 12MB）。</p></div><label className="inline-flex items-center bg-[#101923] text-white text-xs font-bold px-4 py-3 cursor-pointer">{uploading?"正在上传...":"上传图片"}<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple disabled={uploading} onChange={uploadProductImages} className="hidden"/></label></div>
               <div className="grid md:grid-cols-[200px_1fr] gap-4 mt-5"><div className="aspect-[4/3] bg-slate-100 border border-slate-200 overflow-hidden">{productDraft.hero_image?<img src={productDraft.hero_image} alt="产品主图预览" className="w-full h-full object-contain"/>:<div className="w-full h-full flex items-center justify-center text-xs text-slate-400">主图预览</div>}</div><div className="space-y-3"><label className="block text-xs font-bold">主图 URL<input value={productDraft.hero_image} onChange={event=>updateProductDraft("hero_image",event.target.value)} className="w-full border border-slate-300 px-3 py-3 mt-2 text-xs font-normal"/></label><label className="block text-xs font-bold">图片集 URL（每行一张）<textarea rows={3} value={productDraft.gallery_text} onChange={event=>updateProductDraft("gallery_text",event.target.value)} placeholder="上传后自动填入；也可粘贴已有图片 URL" className="w-full border border-slate-300 px-3 py-3 mt-2 text-xs font-normal"/></label></div></div>
             </div>
 
