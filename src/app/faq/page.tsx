@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import Header from "../../components/Header";
+import Footer from "../../components/Footer";
 import FAQContent from "../../components/FAQContent";
 import { getPublishedFAQs } from "../../lib/cms";
 
@@ -32,7 +34,7 @@ export default async function FAQPage() {
     }))
   };
 
-  return <main className="min-h-screen bg-[#f7f8f6] text-[#101923]">
+  return <><Header/><main className="min-h-screen bg-[#f7f8f6] text-[#101923]">
     {items.length > 0 && <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(faqSchema).replace(/</g,"\\u003c")}} />}
     <section className="bg-[#101923] text-white px-5 md:px-8 py-16 md:py-24">
       <div className="max-w-6xl mx-auto">
@@ -52,5 +54,5 @@ export default async function FAQPage() {
       {items.length ? <FAQContent items={items} /> : <div className="bg-white border border-slate-200 p-10 text-center"><h2 className="font-black text-xl">FAQ articles are being prepared</h2><p className="text-sm text-slate-500 mt-3">Contact our team for product specifications, sourcing requirements and export documentation questions.</p><a href="/inquiry" className="inline-flex mt-6 bg-[#101923] text-white px-6 py-3 text-xs font-bold">CONTACT SALES ↗</a></div>}
       <p className="max-w-4xl mx-auto text-[11px] text-slate-400 leading-6 mt-10">Regulatory and certification information is general guidance, not legal advice or a certification statement. Requirements depend on the destination country, vehicle classification, product configuration and shipment date. Confirm current rules with the relevant authority and qualified local specialists before importing.</p>
     </section>
-  </main>;
+  </main><Footer/></>;
 }
