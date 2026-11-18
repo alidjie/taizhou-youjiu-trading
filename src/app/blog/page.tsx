@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
-import { getPublishedBlogPosts } from "../../lib/cms";
+import { getPublishedBlogPostCards, getPublishedBlogPostCount, getPublishedBlogCategories } from "../../lib/cms";
 import { applyTranslation, getLocale } from "../../lib/i18n";
 
 export const metadata:Metadata={title:"Blog & Industry Insights",description:"Insights on electric mobility, electric motorcycles, e-bikes, motors, suspension systems and international export markets."};
@@ -13,12 +13,14 @@ export default async function BlogIndex({searchParams}:{searchParams:Promise<{pa
   const page=Math.max(1,Number(params.page)||1);
   const category=params.category||"";
   const locale=await getLocale();
-  const all=await getPublishedBlogPosts(1000,0,category||undefined);
   const pageSize=12;
-  const totalPages=Math.max(1,Math.ceil(all.length/pageSize));
-  const visible=all.slice((page-1)*pageSize,page*pageSize);
+  const [visible,total,categories]=await Promise.all([
+    getPublishedBlogPostCards(pageSize,(page-1)*pageSize,category||undefined),
+    getPublishedBlogPostCount(category||undefined),
+    getPublishedBlogCategories()
+  ]);
+  const totalPages=Math.max(1,Math.ceil(total/pageSize));
   const posts=await Promise.all(visible.map(post=>applyTranslation(locale,"blog",post.id,post)));
-  const categories=Array.from(new Set(all.map(post=>post.category).filter(Boolean)));
   return <><Header/><main className="min-h-screen">
     <section className="bg-[#101923] text-white py-20"><div className="container"><div className="eyebrow !text-[#b8ed36] mb-4">YOUJIU KNOWLEDGE HUB</div><h1 className="text-5xl md:text-6xl font-black">Blog & Insights</h1><p className="text-slate-300 max-w-2xl leading-8 mt-6">Industry perspectives, product knowledge and practical export insights for electric mobility distributors, importers and OEM partners.</p></div></section>
     <section className="container py-16">
