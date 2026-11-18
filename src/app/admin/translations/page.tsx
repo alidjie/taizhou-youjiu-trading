@@ -12,7 +12,7 @@ const languages = [{id:"fr",name:"Français"},{id:"de",name:"Deutsch"},{id:"es",
 type Row = { id:string; entity_type:string; entity_id:string; locale:string; source_content:Record<string,unknown>; translated_content:Record<string,unknown>; status:string; updated_at:string };
 type ProductOption = { id:string; name:string; model_code:string|null; slug:string };
 type ContentOption = { key:string; page:string; label:string };
-type BlogOption = { id:string; title:string; slug:string; excerpt:string; content:string; category:string|null; tags:string[]|null; author:string|null; seo_title:string|null; seo_description:string|null };
+type BlogOption = { id:string; title:string; slug:string; excerpt:string; category:string|null; tags:string[]|null; author:string|null; seo_title:string|null; seo_description:string|null };
 
 export default function TranslationAdmin() {
   const [token,setToken]=useState("");
@@ -53,7 +53,7 @@ export default function TranslationAdmin() {
       fetch(`${API}/rest/v1/site_translations?select=*&order=updated_at.desc&limit=200`,{headers}),
       fetch(`${API}/rest/v1/products?select=id,name,model_code,slug&order=name.asc&limit=1000`,{headers}),
       fetch(`${API}/rest/v1/site_content?select=key,page,label&order=page.asc,sort_order.asc&limit=500`,{headers}),
-      fetch(`${API}/rest/v1/blog_posts?select=id,title,slug,excerpt,content,category,tags,author,seo_title,seo_description&order=title.asc&limit=1000`,{headers})
+      fetch(`${API}/rest/v1/blog_posts?select=id,title,slug,excerpt,category,tags,author,seo_title,seo_description&order=title.asc&limit=1000`,{headers})
     ]);
     for(const response of [translationsResponse,productsResponse,contentResponse,blogsResponse]) {
       if(!response.ok) throw new Error(await response.text());
@@ -78,8 +78,12 @@ export default function TranslationAdmin() {
       } else if (entityType === "blog") {
         const sourceRecord = blogOptions.find(post => post.id === entityId);
         if (!sourceRecord) throw new Error("请选择一个有效的 Blog 文章。");
+        const response = await fetch(`${API}/rest/v1/blog_posts?select=content&id=eq.${encodeURIComponent(entityId)}&limit=1`, { headers: { apikey: KEY, Authorization: `Bearer ${token}` } });
+        if (!response.ok) throw new Error(await response.text());
+        const articleRows = await response.json();
+        if (!articleRows.length) throw new Error("没有找到该 Blog 正文。");
         setSource(JSON.stringify({
-          title: sourceRecord.title, excerpt: sourceRecord.excerpt, content: sourceRecord.content,
+          title: sourceRecord.title, excerpt: sourceRecord.excerpt, content: articleRows[0].content,
           category: sourceRecord.category, tags: sourceRecord.tags, author: sourceRecord.author,
           seo_title: sourceRecord.seo_title, seo_description: sourceRecord.seo_description
         }, null, 2));
