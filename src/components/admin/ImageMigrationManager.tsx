@@ -64,22 +64,31 @@ async function patchRow(path: string, token: string, body: unknown) {
 async function listBucket(bucket: string, token: string): Promise<StoredObject[]> {
   const found: StoredObject[] = [];
   const walk = async (prefix: string) => {
-    let offset = 0;
-    while (true) {
-      const response = await fetch(`${API}/storage/v1/object/list/${encodeURIComponent(bucket)}`, {
+    let cursor: string | undefined;
+    do {
+      const response = await fetch(`${API}/storage/v1/object/list-v2/${encodeURIComponent(bucket)}`, {
         method: "POST", headers: authHeaders(token),
-        body: JSON.stringify({ prefix, limit: 100, offset, sortBy: { column: "name", order: "asc" } })
+        body: JSON.stringify({ prefix, limit: 100, with_delimiter: true, ...(cursor ? { cursor } : {}) })
       });
       if (!response.ok) throw new Error(await response.text() || `扫描存储桶 ${bucket} 失败`);
-      const items = await response.json() as StorageItem[];
-      for (const item of items) {
-        const path = prefix ? `${prefix}/${item.name}` : item.name;
-        if (item.id || item.metadata) found.push({ bucket, path, url: `${API}/storage/v1/object/public/${encodeURIComponent(bucket)}/${encodePath(path)}` });
-        else await walk(path);
+      const page = await response.json() as {
+        objects?: Array<{ name: string; id?: string | null; metadata?: Record<string, unknown> | null }>;
+        folders?: Array<{ name: string; key?: string }>;
+        hasNext?: boolean;
+        nextCursor?: string;
+      };
+      for (const item of page.objects || []) {
+        if (item.id !== null) {
+          const path = item.name.includes("/") || !prefix ? item.name : `${prefix}${item.name}`;
+          found.push({ bucket, path, url: `${API}/storage/v1/object/public/${encodeURIComponent(bucket)}/${encodePath(path)}` });
+        }
       }
-      if (items.length < 100) break;
-      offset += items.length;
-    }
+      for (const folder of page.folders || []) {
+        const folderPath = (folder.key || (prefix ? `${prefix}${folder.name}` : folder.name)).replace(/^\\/+|\\/+$/g, "");
+        await walk(folderPath);
+      }
+      cursor = page.hasNext ? page.nextCursor : undefined;
+    } while (cursor);
   };
   await walk("");
   return found;
