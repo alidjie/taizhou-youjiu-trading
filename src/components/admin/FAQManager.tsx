@@ -137,13 +137,6 @@ export default function FAQManager({ accessToken }: { accessToken: string }) {
     if (!window.confirm(`确认审核并发布这条 FAQ？\n\n${item.question}\n\n发布后访客可在网站 FAQ 栏目看到。`)) return;
     setBusy(true); setError(""); setNotice("");
     try {
-      if (item.revision_of) {
-        const oldResponse = await fetch(`${API}/rest/v1/faqs?id=eq.${encodeURIComponent(item.revision_of)}`, {
-          method: "PATCH", headers: { ...apiHeaders(accessToken), Prefer: "return=minimal" },
-          body: JSON.stringify({ status: "archived", updated_at: new Date().toISOString() })
-        });
-        if (!oldResponse.ok) throw new Error(await oldResponse.text() || "归档旧版本失败，未发布新版本。");
-      }
       const response = await fetch(`${API}/rest/v1/faqs?id=eq.${encodeURIComponent(item.id)}`, {
         method: "PATCH", headers: { ...apiHeaders(accessToken), Prefer: "return=minimal" },
         body: JSON.stringify({
@@ -152,6 +145,19 @@ export default function FAQManager({ accessToken }: { accessToken: string }) {
         })
       });
       if (!response.ok) throw new Error(await response.text() || "发布 FAQ 失败。");
+      if (item.revision_of) {
+        const oldResponse = await fetch(`${API}/rest/v1/faqs?id=eq.${encodeURIComponent(item.revision_of)}`, {
+          method: "PATCH", headers: { ...apiHeaders(accessToken), Prefer: "return=minimal" },
+          body: JSON.stringify({ status: "archived", updated_at: new Date().toISOString() })
+        });
+        if (!oldResponse.ok) {
+          await fetch(`${API}/rest/v1/faqs?id=eq.${encodeURIComponent(item.id)}`, {
+            method: "PATCH", headers: { ...apiHeaders(accessToken), Prefer: "return=minimal" },
+            body: JSON.stringify({ status: "suggested", published_at: null, reviewed_at: null, updated_at: new Date().toISOString() })
+          });
+          throw new Error(await oldResponse.text() || "替换旧 FAQ 版本失败；新版本已恢复为待审核。");
+        }
+      }
       await load(); setNotice("FAQ 已由管理员确认并发布到网站。");
     } catch (e) { setError(e instanceof Error ? e.message : "发布失败。"); }
     finally { setBusy(false); }
