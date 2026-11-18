@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { getPublishedProducts, getPublishedBlogPosts } from "../lib/cms";
+import { getPublishedProducts, getPublishedBlogSitemapPosts } from "../lib/cms";
 
 const baseUrl = "https://www.almcp.com";
 const locales = ["fr", "de", "es", "ar", "ru", "pt"];
@@ -19,7 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "weekly",
     priority: product.featured ? 0.85 : 0.7
   }));
-  const posts = await getPublishedBlogPosts(1000);
+  const posts = await getPublishedBlogSitemapPosts();
   const blogEntries: MetadataRoute.Sitemap = posts.flatMap(post => [
     { url: `${baseUrl}/blog/${post.slug}`, lastModified: post.updated_at ? new Date(post.updated_at) : new Date(), changeFrequency: "monthly" as const, priority: post.featured ? 0.8 : 0.65 },
     ...locales.map(locale => ({ url: `${baseUrl}/${locale}/blog/${post.slug}`, lastModified: post.updated_at ? new Date(post.updated_at) : new Date(), changeFrequency: "monthly" as const, priority: post.featured ? 0.75 : 0.6 }))
