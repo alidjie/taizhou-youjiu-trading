@@ -40,7 +40,7 @@ export default async function FAQPage() {
         <h1 className="text-4xl md:text-6xl font-black tracking-tight mt-4">Frequently Asked Questions</h1>
         <p className="max-w-3xl text-slate-300 text-base md:text-lg leading-8 mt-6">Practical answers to common sourcing, technical, certification, battery, logistics and after-sales questions from electric mobility importers, distributors and OEM partners.</p>
         <div className="flex flex-wrap gap-3 mt-8 text-[10px] font-bold tracking-widest text-slate-400">
-          <span>ELCTRIC MOTORCYCLES</span><span>•</span><span>E-BIKES</span><span>•</span><span>BLDC MOTORS</span><span>•</span><span>SUSPENSION</span>
+          <span>ELECTRIC MOTORCYCLES</span><span>•</span><span>E-BIKES</span><span>•</span><span>BLDC MOTORS</span><span>•</span><span>SUSPENSION</span>
         </div>
       </div>
     </section>
