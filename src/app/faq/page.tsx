@@ -33,7 +33,7 @@ export default async function FAQPage() {
   };
 
   return <main className="min-h-screen bg-[#f7f8f6] text-[#101923]">
-    <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(faqSchema).replace(/</g,"\\u003c")}} />
+    {items.length > 0 && <script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(faqSchema).replace(/</g,"\\u003c")}} />}
     <section className="bg-[#101923] text-white px-5 md:px-8 py-16 md:py-24">
       <div className="max-w-6xl mx-auto">
         <div className="text-[10px] tracking-[.25em] text-[#b8ed36] font-black">YOUJIU BUYER KNOWLEDGE CENTRE</div>
