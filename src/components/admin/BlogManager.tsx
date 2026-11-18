@@ -6,7 +6,7 @@ const API = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://fsqpeuulaglnnwfyxnd
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_27Jb43sOATe3CJlIEP-zVQ_-QFD6HOB";
 
 type BlogPost = {
-  id: string; slug: string; title: string; excerpt: string; content: string;
+  id: string; slug: string; title: string; excerpt: string; content?: string;
   image: string | null; cover_image: string | null; author: string | null;
   date: string | null; category: string | null; tags: string[] | null;
   status: "draft" | "published"; featured: boolean; published_at: string | null;
@@ -45,7 +45,7 @@ export default function BlogManager({ accessToken }: { accessToken:string }) {
   const [notice,setNotice]=useState("");
 
   async function load() {
-    const response=await fetch(`${API}/rest/v1/blog_posts?select=*&order=updated_at.desc&limit=1000`,{headers:headers(accessToken),cache:"no-store"});
+    const response=await fetch(`${API}/rest/v1/blog_posts?select=id,slug,title,excerpt,image,cover_image,author,date,category,tags,status,featured,published_at,seo_title,seo_description,created_at,updated_at&order=updated_at.desc&limit=1000`,{headers:headers(accessToken),cache:"no-store"});
     if(!response.ok) throw new Error(await response.text() || "读取 Blog 文章失败。");
     setPosts(await response.json());
   }
@@ -56,16 +56,22 @@ export default function BlogManager({ accessToken }: { accessToken:string }) {
     return posts.filter(post=>(filter==="all"||post.status===filter)&&(!term||post.title.toLowerCase().includes(term)||post.slug.toLowerCase().includes(term)||(post.category||"").toLowerCase().includes(term)));
   },[posts,search,filter]);
 
-  function edit(post:BlogPost) {
-    setDraft({
-      id:post.id, slug:post.slug, title:post.title, excerpt:post.excerpt||"", content:post.content||"",
-      cover_image:post.cover_image||post.image||"", author:post.author||"YOUJIU Editorial Team",
-      category:post.category||"Industry Insights", tags:(post.tags||[]).join(", "),
-      status:post.status||"draft", featured:Boolean(post.featured),
-      seo_title:post.seo_title||"", seo_description:post.seo_description||""
-    });
-    setError("");setNotice("");
-    window.scrollTo({top:0,behavior:"smooth"});
+  async function edit(post:BlogPost) {
+    setBusy(true);setError("");setNotice("");
+    try {
+      const response=await fetch(`${API}/rest/v1/blog_posts?select=content&id=eq.${encodeURIComponent(post.id)}&limit=1`,{headers:headers(accessToken),cache:"no-store"});
+      if(!response.ok) throw new Error(await response.text()||"读取文章正文失败。");
+      const rows=await response.json() as Array<{content:string}>;
+      setDraft({
+        id:post.id, slug:post.slug, title:post.title, excerpt:post.excerpt||"", content:rows[0]?.content||"",
+        cover_image:post.cover_image||post.image||"", author:post.author||"YOUJIU Editorial Team",
+        category:post.category||"Industry Insights", tags:(post.tags||[]).join(", "),
+        status:post.status||"draft", featured:Boolean(post.featured),
+        seo_title:post.seo_title||"", seo_description:post.seo_description||""
+      });
+      window.scrollTo({top:0,behavior:"smooth"});
+    } catch(e) {setError(e instanceof Error?e.message:"读取文章失败。");}
+    finally {setBusy(false);}
   }
 
   async function uploadCover(event:React.ChangeEvent<HTMLInputElement>) {
