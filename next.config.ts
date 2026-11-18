@@ -1,9 +1,19 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  experimental: {
+    // The shared Tailwind stylesheet is small; inline it to remove the
+    // render-blocking CSS round trip on first visits.
+    inlineCss: true,
+  },
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "images.unsplash.com" },
+      { protocol: "https", hostname: "fsqpeuulaglnnwfyxndj.supabase.co", pathname: "/storage/v1/object/public/**" },
+    ],
+    formats: ["image/avif", "image/webp"],
+  },
   webpack: (config, { isServer }) => {
-    // Fixes npm packages that depend on `fs` module
     if (!isServer) {
       config.resolve.fallback = { fs: false, path: false };
     }
@@ -12,5 +22,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
-
