@@ -7,16 +7,34 @@ import BlogContent from "../../../components/BlogContent";
 import { getPublishedBlogPost } from "../../../lib/cms";
 import { applyTranslation, getLocale } from "../../../lib/i18n";
 
+const siteUrl = "https://www.almcp.com";
 type Props={params:Promise<{slug:string}>};
 export const dynamic="force-dynamic";
 
 export async function generateMetadata({params}:Props):Promise<Metadata>{
   const {slug}=await params;
   const post=await getPublishedBlogPost(slug);
-  if(!post)return {title:"Article not found"};
+  if(!post)return {title:"Article not found",robots:{index:false,follow:false}};
   const locale=await getLocale();
   const localized=await applyTranslation(locale,"blog",post.id,post);
-  return {title:localized.seo_title||localized.title,description:localized.seo_description||localized.excerpt,openGraph:{type:"article",title:localized.seo_title||localized.title,description:localized.seo_description||localized.excerpt,images:localized.cover_image||localized.image?[localized.cover_image||localized.image||""]:[]}};
+  const canonicalPath=locale==="en"?`/blog/${slug}`:`/${locale}/blog/${slug}`;
+  const image=localized.cover_image||localized.image||undefined;
+  return {
+    title:localized.seo_title||localized.title,
+    description:localized.seo_description||localized.excerpt,
+    alternates:{canonical:canonicalPath},
+    openGraph:{
+      type:"article",
+      url:`${siteUrl}${canonicalPath}`,
+      title:localized.seo_title||localized.title,
+      description:localized.seo_description||localized.excerpt,
+      publishedTime:localized.published_at||localized.date||undefined,
+      modifiedTime:localized.updated_at||undefined,
+      authors:[localized.author||"YOUJIU Editorial Team"],
+      images:image?[image]:[]
+    },
+    twitter:{card:image?"summary_large_image":"summary",title:localized.seo_title||localized.title,description:localized.seo_description||localized.excerpt,images:image?[image]:[]}
+  };
 }
 
 export default async function BlogArticle({params}:Props){
@@ -26,7 +44,21 @@ export default async function BlogArticle({params}:Props){
   const locale=await getLocale();
   const article=await applyTranslation(locale,"blog",post.id,post);
   const publishedDate=article.published_at||article.date;
-  const schema={"@context":"https://schema.org","@type":"Article","headline":article.title,"description":article.excerpt,"image":article.cover_image||article.image||undefined,"datePublished":publishedDate||undefined,"dateModified":article.updated_at,"author":{"@type":"Organization","name":article.author||"YOUJIU"},"publisher":{"@type":"Organization","name":"YOUJIU","url":"https://www.almcp.com"},"mainEntityOfPage":`https://www.almcp.com/blog/${article.slug}`};
+  const canonicalPath=locale==="en"?`/blog/${slug}`:`/${locale}/blog/${slug}`;
+  const schema={
+    "@context":"https://schema.org",
+    "@type":"BlogPosting",
+    "headline":article.title,
+    "description":article.excerpt,
+    "image":article.cover_image||article.image||undefined,
+    "datePublished":publishedDate||undefined,
+    "dateModified":article.updated_at||publishedDate||undefined,
+    "author":{"@type":"Organization","name":article.author||"YOUJIU Editorial Team"},
+    "publisher":{"@type":"Organization","name":"YOUJIU","url":siteUrl},
+    "mainEntityOfPage":{"@type":"WebPage","@id":`${siteUrl}${canonicalPath}`},
+    "inLanguage":locale,
+    "keywords":article.tags?.join(", ")
+  };
   return <><Header/><main className="min-h-screen"><article className="container max-w-4xl py-14 md:py-20">
     <Link href="/blog" className="text-xs font-bold tracking-widest text-slate-500 hover:text-[#789b1e]">← BACK TO BLOG</Link>
     <div className="mt-9 text-[10px] font-black tracking-widest uppercase text-[#789b1e]">{article.category}</div>
