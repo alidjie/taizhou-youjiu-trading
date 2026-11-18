@@ -43,7 +43,7 @@ async function publicRest<T>(path: string): Promise<T | null> {
       headers: {
         apikey: SUPABASE_KEY,
       },
-      cache: "no-store",
+      next: { revalidate: 60 },
     });
     if (!response.ok) return null;
     return (await response.json()) as T;
