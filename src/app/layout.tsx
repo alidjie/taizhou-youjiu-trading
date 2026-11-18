@@ -8,6 +8,10 @@ export const metadata: Metadata = {
   description: "Electric motorcycles, electric bicycles, BLDC motors and suspension systems for global distributors, importers and OEM partners.",
   keywords: ["electric motorcycles", "electric bicycles", "BLDC motors", "motorcycle shock absorbers", "OEM electric mobility supplier"],
   openGraph: { type: "website", siteName: "YOUJIU", title: "YOUJIU | Intelligent Mobility & Industrial Components", description: "A manufacturing and supply partner for global electric mobility businesses." },
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    shortcut: ["/icon.svg"]
+  },
   robots: { index: true, follow: true }
 };
 
