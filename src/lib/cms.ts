@@ -117,3 +117,51 @@ export async function getPublishedBlogPost(slug: string): Promise<CmsBlogPost | 
   const rows = await publicRest<CmsBlogPost[]>(`blog_posts?${query.toString()}`);
   return rows?.[0] ?? null;
 }
+
+
+export type CmsBlogCard = Omit<CmsBlogPost, "content">;
+
+export async function getPublishedBlogPostCards(limit = 12, offset = 0, category?: string): Promise<CmsBlogCard[]> {
+  const query = new URLSearchParams({
+    select: "id,slug,title,excerpt,image,cover_image,author,date,category,tags,status,featured,published_at,seo_title,seo_description,created_at,updated_at",
+    status: "eq.published",
+    order: "published_at.desc.nullslast,created_at.desc",
+    limit: String(limit),
+    offset: String(offset)
+  });
+  if (category) query.set("category", `eq.${category}`);
+  const rows = await publicRest<CmsBlogCard[]>(`blog_posts?${query.toString()}`);
+  return rows ?? [];
+}
+
+export async function getPublishedBlogPostCount(category?: string): Promise<number> {
+  try {
+    const query = new URLSearchParams({ select: "id", status: "eq.published" });
+    if (category) query.set("category", `eq.${category}`);
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/blog_posts?${query.toString()}`, {
+      method: "HEAD",
+      headers: { apikey: SUPABASE_KEY, Prefer: "count=exact", Range: "0-0" },
+      cache: "no-store"
+    });
+    if (!response.ok) return 0;
+    const range = response.headers.get("content-range") || "";
+    const total = Number(range.split("/")[1]);
+    return Number.isFinite(total) ? total : 0;
+  } catch { return 0; }
+}
+
+export async function getPublishedBlogCategories(): Promise<string[]> {
+  const query = new URLSearchParams({ select: "category", status: "eq.published", limit: "1000" });
+  const rows = await publicRest<Array<{category:string|null}>>(`blog_posts?${query.toString()}`);
+  return Array.from(new Set((rows || []).map(row => row.category).filter((value): value is string => Boolean(value)))).sort();
+}
+
+export async function getPublishedBlogSitemapPosts(): Promise<Array<Pick<CmsBlogPost, "slug" | "featured" | "updated_at">>> {
+  const query = new URLSearchParams({
+    select: "slug,featured,updated_at",
+    status: "eq.published",
+    order: "published_at.desc.nullslast,created_at.desc",
+    limit: "1000"
+  });
+  return await publicRest<Array<Pick<CmsBlogPost, "slug" | "featured" | "updated_at">>>(`blog_posts?${query.toString()}`) || [];
+}
