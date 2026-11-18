@@ -4,7 +4,7 @@ import { getPublishedProducts, getPublishedBlogSitemapPosts } from "../lib/cms";
 const baseUrl = "https://www.almcp.com";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const routes = ["/", "/products", "/products/electric-motorcycles", "/products/electric-bicycles", "/products/electric-motors", "/products/suspension-systems", "/about", "/contact", "/inquiry", "/blog"];
+  const routes = ["/", "/products", "/products/electric-motorcycles", "/products/electric-bicycles", "/products/electric-motors", "/products/suspension-systems", "/about", "/contact", "/inquiry", "/blog", "/faq"];
   const staticEntries: MetadataRoute.Sitemap = routes.map((route, index) => ({
     url: `${baseUrl}${route === "/" ? "" : route}`,
     changeFrequency: route === "/" || route.startsWith("/products") || route === "/blog" ? "weekly" : "monthly",
