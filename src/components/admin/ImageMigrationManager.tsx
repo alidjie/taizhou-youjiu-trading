@@ -84,7 +84,7 @@ async function listBucket(bucket: string, token: string): Promise<StoredObject[]
         }
       }
       for (const folder of page.folders || []) {
-        const folderPath = (folder.key || (prefix ? `${prefix}${folder.name}` : folder.name)).replace(/^\\/+|\\/+$/g, "");
+        const folderPath = (folder.key || (prefix ? `${prefix}${folder.name}` : folder.name)).replace(/^\/+|\/+$/g, "");
         await walk(folderPath);
       }
       cursor = page.hasNext ? page.nextCursor : undefined;
