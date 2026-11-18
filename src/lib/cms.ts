@@ -167,3 +167,49 @@ export async function getPublishedBlogSitemapPosts(): Promise<Array<Pick<CmsBlog
   });
   return await publicRest<Array<Pick<CmsBlogPost, "slug" | "featured" | "updated_at">>>(`blog_posts?${query.toString()}`) || [];
 }
+
+export type CmsFAQSource = {
+  title: string;
+  publisher?: string;
+  url: string;
+  verified_on?: string;
+};
+
+export type CmsFAQ = {
+  id: string;
+  slug: string;
+  question: string;
+  answer: string;
+  category: string;
+  product_categories: string[];
+  keywords: string[];
+  locale: string;
+  sources: CmsFAQSource[];
+  featured: boolean;
+  sort_order: number;
+  updated_at?: string | null;
+  created_at?: string | null;
+};
+
+export async function getPublishedFAQs(locale = "en"): Promise<CmsFAQ[]> {
+  const query = new URLSearchParams({
+    select: "id,slug,question,answer,category,product_categories,keywords,locale,sources,featured,sort_order,updated_at,created_at",
+    status: "eq.published",
+    locale: `eq.${locale}`,
+    order: "sort_order.asc,created_at.asc",
+    limit: "500"
+  });
+  return await publicRest<CmsFAQ[]>(`faqs?${query.toString()}`) || [];
+}
+
+export async function getPublishedFAQSitemapItems(): Promise<Array<Pick<CmsFAQ, "slug" | "updated_at">>> {
+  const query = new URLSearchParams({
+    select: "slug,updated_at",
+    status: "eq.published",
+    locale: "eq.en",
+    order: "sort_order.asc,created_at.asc",
+    limit: "500"
+  });
+  return await publicRest<Array<Pick<CmsFAQ, "slug" | "updated_at">>>(`faqs?${query.toString()}`) || [];
+}
+
