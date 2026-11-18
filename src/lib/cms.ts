@@ -83,3 +83,37 @@ export async function getPublishedProduct(category: string, slug: string): Promi
   const rows = await publicRest<CmsProduct[]>(`products?${query.toString()}`);
   return rows?.[0] ?? null;
 }
+
+
+export type CmsBlogPost = {
+  id: string; slug: string; title: string; excerpt: string; content: string;
+  image?: string | null; cover_image?: string | null; author?: string | null;
+  date?: string | null; category?: string | null; tags?: string[] | null;
+  status: "draft" | "published"; featured?: boolean; published_at?: string | null;
+  seo_title?: string | null; seo_description?: string | null;
+  created_at?: string; updated_at?: string;
+};
+
+export async function getPublishedBlogPosts(limit = 12, offset = 0, category?: string): Promise<CmsBlogPost[]> {
+  const query = new URLSearchParams({
+    select: "id,slug,title,excerpt,content,image,cover_image,author,date,category,tags,status,featured,published_at,seo_title,seo_description,created_at,updated_at",
+    status: "eq.published",
+    order: "published_at.desc.nullslast,created_at.desc",
+    limit: String(limit),
+    offset: String(offset)
+  });
+  if (category) query.set("category", `eq.${category}`);
+  const rows = await publicRest<CmsBlogPost[]>(`blog_posts?${query.toString()}`);
+  return rows ?? [];
+}
+
+export async function getPublishedBlogPost(slug: string): Promise<CmsBlogPost | null> {
+  const query = new URLSearchParams({
+    select: "id,slug,title,excerpt,content,image,cover_image,author,date,category,tags,status,featured,published_at,seo_title,seo_description,created_at,updated_at",
+    slug: `eq.${slug}`,
+    status: "eq.published",
+    limit: "1"
+  });
+  const rows = await publicRest<CmsBlogPost[]>(`blog_posts?${query.toString()}`);
+  return rows?.[0] ?? null;
+}
