@@ -81,13 +81,13 @@ export default function BlogManager({ accessToken }: { accessToken:string }) {
     setUploading(true);setError("");
     try {
       const webpFile=await convertImageToWebP(file);
-      const path=\`blog/\${slugify(draft.slug||draft.title||"article")||"article"}/\${crypto.randomUUID()}.webp\`;
-      const response=await fetch(\`\${API}/storage/v1/object/blog-images/\${path}\`,{
-        method:"POST",headers:{apikey:KEY,Authorization:\`Bearer \${accessToken}\`,"Content-Type":"image/webp","x-upsert":"false"},body:webpFile
+      const path=`blog/${slugify(draft.slug||draft.title||"article")||"article"}/${crypto.randomUUID()}.webp`;
+      const response=await fetch(`${API}/storage/v1/object/blog-images/${path}`,{
+        method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${accessToken}`,"Content-Type":"image/webp","x-upsert":"false"},body:webpFile
       });
       if(!response.ok) throw new Error(await response.text()||"封面上传失败。");
-      setDraft(d=>({...d,cover_image:\`\${API}/storage/v1/object/public/blog-images/\${path}\`}));
-      setNotice(\`封面已转换为 WebP（\${formatImageCompression(file.size,webpFile.size)}）。保存文章后生效。\`);
+      setDraft(d=>({...d,cover_image:`${API}/storage/v1/object/public/blog-images/${path}`}));
+      setNotice(`封面已转换为 WebP（${formatImageCompression(file.size,webpFile.size)}）。保存文章后生效。`);
     } catch(e) {setError(e instanceof Error?e.message:"封面上传失败。");}
     finally {setUploading(false);}
   }
