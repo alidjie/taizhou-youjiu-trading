@@ -518,33 +518,32 @@ export default function AdminDashboard() {
       let compressedBytes = 0;
       for (const file of files) {
         originalBytes += file.size;
-        if (!file.type.startsWith("image/")) throw new Error(`${file.name} 不是图片文件。`);
-        if (file.size > 12 * 1024 * 1024) throw new Error(`${file.name} 超过 12MB 限制。`);
-        const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+        const webpFile = await convertImageToWebP(file);
+        compressedBytes += webpFile.size;
         const folder = slugify(productDraft.slug || productDraft.name || "product") || "product";
-        const objectPath = `${folder}/${crypto.randomUUID()}.${extension}`;
-        const response = await fetch(`${apiUrl}/storage/v1/object/products/${objectPath}`, {
+        const objectPath = \`\${folder}/\${crypto.randomUUID()}.webp\`;
+        const response = await fetch(\`\${apiUrl}/storage/v1/object/products/\${objectPath}\`, {
           method: "POST",
           headers: {
             apikey: publishableKey,
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": file.type,
+            Authorization: \`Bearer \${accessToken}\`,
+            "Content-Type": "image/webp",
             "x-upsert": "false"
           },
-          body: file
+          body: webpFile
         });
         if (!response.ok) {
           const detail = await response.text();
-          throw new Error(`图片上传失败：${detail || response.statusText}`);
+          throw new Error(\`图片上传失败：\${detail || response.statusText}\`);
         }
-        uploadedUrls.push(`${apiUrl}/storage/v1/object/public/products/${objectPath}`);
+        uploadedUrls.push(\`\${apiUrl}/storage/v1/object/public/products/\${objectPath}\`);
       }
       setProductDraft(current => ({
         ...current,
         hero_image: current.hero_image || uploadedUrls[0],
-        gallery_text: [...lines(current.gallery_text), ...uploadedUrls].join("\n")
+        gallery_text: [...lines(current.gallery_text), ...uploadedUrls].join("\\n")
       }));
-      setNotice(`成功上传 ${uploadedUrls.length} 张 WebP 图片；${formatImageCompression(originalBytes, compressedBytes)}。保存产品后即会显示在网站上。`);
+      setNotice(\`成功上传 \${uploadedUrls.length} 张 WebP 图片；\${formatImageCompression(originalBytes, compressedBytes)}。保存产品后即会显示在网站上。\`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "图片上传失败。");
     } finally {
@@ -559,28 +558,28 @@ export default function AdminDashboard() {
     setUploading(true);
     setError("");
     try {
-      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const webpFile = await convertImageToWebP(file);
       const folder = slugify(contentDraft.key) || "page-content";
-      const objectPath = `site-content/${folder}/${crypto.randomUUID()}.${extension}`;
-      const response = await fetch(`${apiUrl}/storage/v1/object/products/${objectPath}`, {
+      const objectPath = \`site-content/\${folder}/\${crypto.randomUUID()}.webp\`;
+      const response = await fetch(\`\${apiUrl}/storage/v1/object/products/\${objectPath}\`, {
         method: "POST",
         headers: {
           apikey: publishableKey,
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": file.type,
+          Authorization: \`Bearer \${accessToken}\`,
+          "Content-Type": "image/webp",
           "x-upsert": "false"
         },
-        body: file
+        body: webpFile
       });
       if (!response.ok) {
         const detail = await response.text();
         throw new Error(detail || "页面图片上传失败。");
       }
-      const publicUrl = `${apiUrl}/storage/v1/object/public/products/${objectPath}`;
+      const publicUrl = \`\${apiUrl}/storage/v1/object/public/products/\${objectPath}\`;
       setContentDraft(current => current
         ? { ...current, content: { ...current.content, [fieldKey]: publicUrl } }
         : current);
-      setNotice("页面图片已压缩并转换为 WebP（${formatImageCompression(file.size, webpFile.size)}）。点击“保存文案”后应用到网站页面。");
+      setNotice(\`页面图片已转换为 WebP（\${formatImageCompression(file.size, webpFile.size)}）。点击“保存文案”后应用到网站页面。\`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "页面图片上传失败。");
     } finally {
