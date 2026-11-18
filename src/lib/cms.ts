@@ -33,6 +33,8 @@ export type CmsProduct = {
   sort_order?: number;
   seo_title?: string | null;
   seo_description?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 async function publicRest<T>(path: string): Promise<T | null> {
@@ -63,7 +65,7 @@ export async function getCmsBlock(key: string): Promise<CmsBlock | null> {
 
 export async function getPublishedProducts(category?: string): Promise<CmsProduct[]> {
   const query = new URLSearchParams({
-    select: "id,slug,name,model_code,category,image,hero_image,gallery,short_description,description,specs,features,specifications,certifications,featured,published,sort_order,seo_title,seo_description",
+    select: "id,slug,name,model_code,category,image,hero_image,gallery,short_description,description,specs,features,specifications,certifications,featured,published,sort_order,seo_title,seo_description,created_at,updated_at",
     published: "eq.true",
     order: "sort_order.asc,created_at.desc",
   });
