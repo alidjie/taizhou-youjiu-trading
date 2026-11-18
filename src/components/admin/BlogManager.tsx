@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { convertImageToWebP, formatImageCompression } from "../../lib/image-upload";
 
 const API = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://fsqpeuulaglnnwfyxndj.supabase.co";
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_27Jb43sOATe3CJlIEP-zVQ_-QFD6HOB";
@@ -77,18 +78,16 @@ export default function BlogManager({ accessToken }: { accessToken:string }) {
   async function uploadCover(event:React.ChangeEvent<HTMLInputElement>) {
     const file=event.target.files?.[0]; event.target.value="";
     if(!file) return;
-    if(!["image/jpeg","image/png","image/webp","image/avif"].includes(file.type)) {setError("封面图片仅支持 JPG、PNG、WebP 或 AVIF。");return;}
-    if(file.size>12*1024*1024) {setError("封面图片不能超过 12MB。");return;}
     setUploading(true);setError("");
     try {
-      const ext=file.name.split(".").pop()?.toLowerCase()||"jpg";
-      const path=`blog/${slugify(draft.slug||draft.title||"article")||"article"}/${crypto.randomUUID()}.${ext}`;
-      const response=await fetch(`${API}/storage/v1/object/blog-images/${path}`,{
-        method:"POST",headers:{apikey:KEY,Authorization:`Bearer ${accessToken}`,"Content-Type":file.type,"x-upsert":"false"},body:file
+      const webpFile=await convertImageToWebP(file);
+      const path=\`blog/\${slugify(draft.slug||draft.title||"article")||"article"}/\${crypto.randomUUID()}.webp\`;
+      const response=await fetch(\`\${API}/storage/v1/object/blog-images/\${path}\`,{
+        method:"POST",headers:{apikey:KEY,Authorization:\`Bearer \${accessToken}\`,"Content-Type":"image/webp","x-upsert":"false"},body:webpFile
       });
       if(!response.ok) throw new Error(await response.text()||"封面上传失败。");
-      setDraft(d=>({...d,cover_image:`${API}/storage/v1/object/public/blog-images/${path}`}));
-      setNotice("封面图片上传成功。保存文章后生效。");
+      setDraft(d=>({...d,cover_image:\`\${API}/storage/v1/object/public/blog-images/\${path}\`}));
+      setNotice(\`封面已转换为 WebP（\${formatImageCompression(file.size,webpFile.size)}）。保存文章后生效。\`);
     } catch(e) {setError(e instanceof Error?e.message:"封面上传失败。");}
     finally {setUploading(false);}
   }
@@ -160,7 +159,7 @@ export default function BlogManager({ accessToken }: { accessToken:string }) {
           <label className="block text-xs font-bold">标签（英文逗号分隔）<input value={draft.tags} onChange={e=>setDraft(d=>({...d,tags:e.target.value}))} placeholder="electric motorcycle, export, OEM" className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/></label>
         </div>
         <label className="block text-xs font-bold">文章摘要 / Excerpt<textarea rows={3} value={draft.excerpt} onChange={e=>setDraft(d=>({...d,excerpt:e.target.value}))} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/></label>
-        <div className="border-t border-slate-200 pt-5"><div className="flex flex-wrap justify-between items-center gap-3"><div><h3 className="font-black">文章封面图</h3><p className="text-xs text-slate-500 mt-1">JPG / PNG / WebP / AVIF，单张最大 12MB。</p></div><label className="inline-flex bg-[#101923] text-white px-4 py-3 text-xs font-bold cursor-pointer">{uploading?"正在上传…":"上传封面图"}<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploading} onChange={uploadCover} className="hidden"/></label></div><input value={draft.cover_image} onChange={e=>setDraft(d=>({...d,cover_image:e.target.value}))} placeholder="封面图片 URL" className="w-full border border-slate-300 px-3 py-3 mt-3 text-xs font-normal"/>{draft.cover_image&&<img src={draft.cover_image} alt="封面预览" className="mt-3 max-h-64 w-full object-cover bg-slate-100"/>}</div>
+        <div className="border-t border-slate-200 pt-5"><div className="flex flex-wrap justify-between items-center gap-3"><div><h3 className="font-black">文章封面图</h3><p className="text-xs text-slate-500 mt-1">JPG / PNG / WebP / AVIF，上传时自动压缩并转换为 WebP（原图最大 12MB）。</p></div><label className="inline-flex bg-[#101923] text-white px-4 py-3 text-xs font-bold cursor-pointer">{uploading?"正在上传…":"上传封面图"}<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploading} onChange={uploadCover} className="hidden"/></label></div><input value={draft.cover_image} onChange={e=>setDraft(d=>({...d,cover_image:e.target.value}))} placeholder="封面图片 URL" className="w-full border border-slate-300 px-3 py-3 mt-3 text-xs font-normal"/>{draft.cover_image&&<img src={draft.cover_image} alt="封面预览" className="mt-3 max-h-64 w-full object-cover bg-slate-100"/>}</div>
         <label className="block text-xs font-bold">文章正文 / Markdown<textarea required rows={22} value={draft.content} onChange={e=>setDraft(d=>({...d,content:e.target.value}))} placeholder={"# Main heading\n\nWrite your article here...\n\n## Section heading\n\n- Key point one\n- Key point two"} className="w-full border border-slate-300 px-4 py-4 mt-2 text-sm leading-7 font-mono font-normal"/></label>
         <div className="border-t border-slate-200 pt-5"><h3 className="font-black mb-4">搜索引擎设置 / SEO</h3><div className="grid md:grid-cols-2 gap-4"><label className="block text-xs font-bold">SEO Title<input value={draft.seo_title} onChange={e=>setDraft(d=>({...d,seo_title:e.target.value}))} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/></label><label className="block text-xs font-bold">Meta Description<textarea rows={2} value={draft.seo_description} onChange={e=>setDraft(d=>({...d,seo_description:e.target.value}))} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/></label></div></div>
         <div className="border-t border-slate-200 pt-5 flex flex-wrap items-center gap-5"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.featured} onChange={e=>setDraft(d=>({...d,featured:e.target.checked}))}/>推荐文章</label><label className="flex items-center gap-2 text-sm"><span>发布状态</span><select value={draft.status} onChange={e=>setDraft(d=>({...d,status:e.target.value as "draft"|"published"}))} className="border border-slate-300 px-3 py-2 bg-white"><option value="draft">保存为草稿</option><option value="published">发布到网站</option></select></label><div className="ml-auto flex gap-2"><button type="button" onClick={()=>setDraft(emptyDraft())} className="border border-slate-300 px-4 py-3 text-xs font-bold">清空</button><button disabled={busy||uploading} className="btn-primary disabled:opacity-50">{busy?"保存中…":"保存文章"}</button></div></div>
