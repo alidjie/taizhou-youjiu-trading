@@ -24,6 +24,7 @@ export const productCategories = [
 export const navigationMenu = [
   { name: "Home", href: "/" },
   { name: "Products", href: "/products" },
+  { name: "Blog", href: "/blog" },
   { name: "Manufacturing", href: "/about" },
   { name: "About", href: "/about" },
   { name: "Contact", href: "/contact" },
