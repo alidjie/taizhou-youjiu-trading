@@ -12,12 +12,14 @@ const languages = [{id:"fr",name:"Français"},{id:"de",name:"Deutsch"},{id:"es",
 type Row = { id:string; entity_type:string; entity_id:string; locale:string; source_content:Record<string,unknown>; translated_content:Record<string,unknown>; status:string; updated_at:string };
 type ProductOption = { id:string; name:string; model_code:string|null; slug:string };
 type ContentOption = { key:string; page:string; label:string };
+type BlogOption = { id:string; title:string; slug:string; excerpt:string; content:string; category:string|null; tags:string[]|null; author:string|null; seo_title:string|null; seo_description:string|null };
 
 export default function TranslationAdmin() {
   const [token,setToken]=useState("");
   const [rows,setRows]=useState<Row[]>([]);
   const [productOptions,setProductOptions]=useState<ProductOption[]>([]);
   const [contentOptions,setContentOptions]=useState<ContentOption[]>([]);
+  const [blogOptions,setBlogOptions]=useState<BlogOption[]>([]);
   const [locale,setLocale]=useState("fr");
   const [entityType,setEntityType]=useState("site_content");
   const [entityId,setEntityId]=useState("home.hero");
@@ -47,17 +49,19 @@ export default function TranslationAdmin() {
 
   async function load(access:string) {
     const headers={apikey:KEY,Authorization:`Bearer ${access}`};
-    const [translationsResponse,productsResponse,contentResponse]=await Promise.all([
+    const [translationsResponse,productsResponse,contentResponse,blogsResponse]=await Promise.all([
       fetch(`${API}/rest/v1/site_translations?select=*&order=updated_at.desc&limit=200`,{headers}),
       fetch(`${API}/rest/v1/products?select=id,name,model_code,slug&order=name.asc&limit=1000`,{headers}),
-      fetch(`${API}/rest/v1/site_content?select=key,page,label&order=page.asc,sort_order.asc&limit=500`,{headers})
+      fetch(`${API}/rest/v1/site_content?select=key,page,label&order=page.asc,sort_order.asc&limit=500`,{headers}),
+      fetch(`${API}/rest/v1/blog_posts?select=id,title,slug,excerpt,content,category,tags,author,seo_title,seo_description&order=title.asc&limit=1000`,{headers})
     ]);
-    for(const response of [translationsResponse,productsResponse,contentResponse]) {
+    for(const response of [translationsResponse,productsResponse,contentResponse,blogsResponse]) {
       if(!response.ok) throw new Error(await response.text());
     }
     setRows(await translationsResponse.json());
     setProductOptions(await productsResponse.json());
     setContentOptions(await contentResponse.json());
+    setBlogOptions(await blogsResponse.json());
   }
 
   useEffect(()=>{let alive=true;try{const saved=localStorage.getItem(SESSION);if(saved){const parsed=JSON.parse(saved);if(parsed.refresh_token) void refreshSession(parsed.refresh_token).then(access=>load(access)).catch(e=>{if(alive)setError(e.message);});}else setError("请先在主后台登录。");}catch{setError("无法读取后台登录会话，请先登录主后台。");}return()=>{alive=false;};},[]);
@@ -71,6 +75,14 @@ export default function TranslationAdmin() {
           throw new Error("产品分类 ID 不正确。请从内容 ID 下拉列表选择有效分类，或切换到“页面文案模块”。");
         }
         setSource(JSON.stringify({ name: sourceRecord.name, description: sourceRecord.description, image: sourceRecord.image }, null, 2));
+      } else if (entityType === "blog") {
+        const sourceRecord = blogOptions.find(post => post.id === entityId);
+        if (!sourceRecord) throw new Error("请选择一个有效的 Blog 文章。");
+        setSource(JSON.stringify({
+          title: sourceRecord.title, excerpt: sourceRecord.excerpt, content: sourceRecord.content,
+          category: sourceRecord.category, tags: sourceRecord.tags, author: sourceRecord.author,
+          seo_title: sourceRecord.seo_title, seo_description: sourceRecord.seo_description
+        }, null, 2));
       } else {
         const table = entityType === "site_content" ? "site_content" : "products";
         const select = entityType === "site_content" ? "content" : "name,model_code,short_description,description,specifications,features,certifications,seo_title,seo_description";
@@ -142,8 +154,8 @@ export default function TranslationAdmin() {
         <p className="text-sm text-slate-500 mt-2">先提供英文源文案 JSON。AI 生成目标语言草稿，人工校对后再发布。字段名称、型号、URL 和技术参数会保留。</p>
         <div className="grid md:grid-cols-3 gap-4 mt-6">
   <label className="text-xs font-bold">目标语言<select value={locale} onChange={e=>setLocale(e.target.value)} className="block w-full mt-2 border p-3 bg-white">{languages.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
-  <label className="text-xs font-bold">内容类型<select value={entityType} onChange={e=>{const next=e.target.value;setEntityType(next);setEntityId(next==="category"?productCategories[0].id:next==="site_content"?(contentOptions[0]?.key||""):(productOptions[0]?.id||""));setTranslated("");setStatus("draft");}} className="block w-full mt-2 border p-3 bg-white"><option value="site_content">页面文案模块</option><option value="product">产品详情</option><option value="category">产品分类</option></select></label>
-  <label className="text-xs font-bold">内容 ID{entityType==="category"?<select value={entityId} onChange={e=>setEntityId(e.target.value)} className="block w-full mt-2 border p-3 bg-white">{productCategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select>:entityType==="site_content"?<select value={entityId} onChange={e=>setEntityId(e.target.value)} className="block w-full mt-2 border p-3 bg-white"><option value="">请选择页面文案模块</option>{contentOptions.map(item=><option key={item.key} value={item.key}>{item.page} · {item.label} ({item.key})</option>)}</select>:<select value={entityId} onChange={e=>setEntityId(e.target.value)} className="block w-full mt-2 border p-3 bg-white"><option value="">请选择产品</option>{productOptions.map(item=><option key={item.id} value={item.id}>{item.name}{item.model_code ? " · "+item.model_code : ""} ({item.slug})</option>)}</select>}</label>
+  <label className="text-xs font-bold">内容类型<select value={entityType} onChange={e=>{const next=e.target.value;setEntityType(next);setEntityId(next==="category"?productCategories[0].id:next==="site_content"?(contentOptions[0]?.key||""):next==="blog"?(blogOptions[0]?.id||""):(productOptions[0]?.id||""));setTranslated("");setStatus("draft");}} className="block w-full mt-2 border p-3 bg-white"><option value="site_content">页面文案模块</option><option value="product">产品详情</option><option value="category">产品分类</option><option value="blog">Blog 文章</option></select></label>
+  <label className="text-xs font-bold">内容 ID{entityType==="category"?<select value={entityId} onChange={e=>setEntityId(e.target.value)} className="block w-full mt-2 border p-3 bg-white">{productCategories.map(category=><option key={category.id} value={category.id}>{category.name}</option>)}</select>:entityType==="site_content"?<select value={entityId} onChange={e=>setEntityId(e.target.value)} className="block w-full mt-2 border p-3 bg-white"><option value="">请选择页面文案模块</option>{contentOptions.map(item=><option key={item.key} value={item.key}>{item.page} · {item.label} ({item.key})</option>)}</select>:entityType==="blog"?<select value={entityId} onChange={e=>setEntityId(e.target.value)} className="block w-full mt-2 border p-3 bg-white"><option value="">请选择 Blog 文章</option>{blogOptions.map(item=><option key={item.id} value={item.id}>{item.title} ({item.slug})</option>)}</select>:<select value={entityId} onChange={e=>setEntityId(e.target.value)} className="block w-full mt-2 border p-3 bg-white"><option value="">请选择产品</option>{productOptions.map(item=><option key={item.id} value={item.id}>{item.name}{item.model_code ? " · "+item.model_code : ""} ({item.slug})</option>)}</select>}</label>
 </div>
         <div className="grid lg:grid-cols-2 gap-5 mt-6">
           <label className="text-xs font-bold">英文源文案（JSON）<button type="button" onClick={loadSource} disabled={busy||!token} className="ml-3 border border-slate-300 px-3 py-1 text-[10px] disabled:opacity-40">从现有网站内容加载</button><textarea rows={20} value={source} onChange={e=>setSource(e.target.value)} className="block w-full mt-2 border p-3 font-mono text-xs leading-5"/></label>
