@@ -29,12 +29,14 @@ create index if not exists faqs_revision_of_idx on public.faqs (revision_of);
 alter table public.faqs enable row level security;
 
 drop policy if exists "Published FAQs are visible publicly" on public.faqs;
-create policy "Published FAQs are visible publicly"
-  on public.faqs for select to anon, authenticated using (status = 'published');
-
 drop policy if exists "CMS admins can read all FAQs" on public.faqs;
-create policy "CMS admins can read all FAQs"
-  on public.faqs for select to authenticated using ((select public.is_cms_admin()));
+
+create policy "Published FAQs are visible to anonymous visitors"
+  on public.faqs for select to anon using (status = 'published');
+
+create policy "Authenticated users can read published FAQs and CMS admins can read all"
+  on public.faqs for select to authenticated
+  using (status = 'published' or (select public.is_cms_admin()));
 
 drop policy if exists "CMS admins can insert FAQs" on public.faqs;
 create policy "CMS admins can insert FAQs"
