@@ -3,6 +3,7 @@
 import Link from "next/link";
 import BlogManager from "../../components/admin/BlogManager";
 import FAQManager from "../../components/admin/FAQManager";
+import ImageMigrationManager from "../../components/admin/ImageMigrationManager";
 import { convertImageToWebP, formatImageCompression } from "../../lib/image-upload";
 import { useEffect, useMemo, useState } from "react";
 
@@ -216,7 +217,7 @@ export default function AdminDashboard() {
   const [sessionExpiresAt, setSessionExpiresAt] = useState(0);
   const [needsAdminClaim, setNeedsAdminClaim] = useState(false);
   const [bootstrapCode, setBootstrapCode] = useState("");
-  const [tab, setTab] = useState<"inquiries" | "products" | "content" | "blog" | "faqs">("products");
+  const [tab, setTab] = useState<"inquiries" | "products" | "content" | "blog" | "faqs" | "images">("products");
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
@@ -872,6 +873,7 @@ export default function AdminDashboard() {
           <button onClick={()=>setTab("content")} aria-current={tab==="content"?"page":undefined} className={`whitespace-nowrap px-4 sm:px-5 py-3 text-sm font-bold border-b-2 ${tab==="content"?"border-[#7ca51c] text-[#101923]":"border-transparent text-slate-500"}`}>营销文案</button>
           <button onClick={()=>setTab("blog")} aria-current={tab==="blog"?"page":undefined} className={`whitespace-nowrap px-4 sm:px-5 py-3 text-sm font-bold border-b-2 ${tab==="blog"?"border-[#7ca51c] text-[#101923]":"border-transparent text-slate-500"}`}>Blog 管理</button>
           <button onClick={()=>setTab("faqs")} aria-current={tab==="faqs"?"page":undefined} className={`whitespace-nowrap px-4 sm:px-5 py-3 text-sm font-bold border-b-2 ${tab==="faqs"?"border-[#7ca51c] text-[#101923]":"border-transparent text-slate-500"}`}>FAQ 审核</button>
+          <button onClick={()=>setTab("images")} aria-current={tab==="images"?"page":undefined} className="whitespace-nowrap px-4 sm:px-5 py-3 text-sm font-bold border-b-2">图片迁移</button>
           <button onClick={()=>setTab("inquiries")} aria-current={tab==="inquiries"?"page":undefined} className={`whitespace-nowrap px-4 sm:px-5 py-3 text-sm font-bold border-b-2 ${tab==="inquiries"?"border-[#7ca51c] text-[#101923]":"border-transparent text-slate-500"}`}>客户询盘</button>
         </div>
       </nav>
@@ -944,6 +946,8 @@ export default function AdminDashboard() {
       {tab === "blog" && <BlogManager accessToken={accessToken}/>}
 
       {tab === "faqs" && <FAQManager accessToken={accessToken}/>}
+
+      {tab === "images" && <ImageMigrationManager accessToken={accessToken}/>}
 
       {tab === "inquiries" && <section className="bg-white border border-slate-200 overflow-x-auto"><div className="p-5 border-b border-slate-200"><h2 className="font-black text-lg">客户询盘</h2><p className="text-xs text-slate-500 mt-1">最新 200 条询盘 · {inquiries.length} 条已加载</p></div><table className="w-full text-left text-sm min-w-[1050px]"><thead className="bg-[#e9edef] text-[10px] tracking-widest uppercase"><tr>{["客户","公司 / 国家","产品","数量","留言","状态","收到时间"].map(label=><th key={label} className="p-4">{label}</th>)}</tr></thead><tbody>{inquiries.map(item=><tr key={item.id} className="border-t border-slate-100 align-top"><td className="p-4"><div className="font-bold">{item.name}</div><a className="text-xs text-blue-700" href={`mailto:${item.email}`}>{item.email}</a>{item.phone&&<div className="text-xs text-slate-500 mt-1">{item.phone}</div>}</td><td className="p-4 text-xs">{item.company||"—"}<div className="text-slate-500 mt-1">{item.country||"—"}</div></td><td className="p-4 text-xs">{item.product_name||item.product_category||"General enquiry"}</td><td className="p-4 text-xs">{item.quantity||"—"}</td><td className="p-4 text-xs max-w-xs whitespace-pre-wrap">{item.message}</td><td className="p-4"><select aria-label="Enquiry status" value={item.status||"new"} onChange={event=>void updateInquiryStatus(item.id,event.target.value)} className="border border-slate-300 px-2 py-2 text-xs bg-white"><option value="new">New</option><option value="contacted">Contacted</option><option value="qualified">Qualified</option><option value="closed">Closed</option></select></td><td className="p-4 text-xs text-slate-500 whitespace-nowrap">{new Date(item.created_at).toLocaleString()}</td></tr>)}</tbody></table>{!inquiries.length&&!loading&&<p className="p-10 text-center text-slate-500 text-sm">暂无询盘记录。</p>}</section>}
     </div>
