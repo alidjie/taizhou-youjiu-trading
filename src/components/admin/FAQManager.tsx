@@ -37,19 +37,18 @@ function toDraft(item: FAQ): Draft {
     id: item.id, revision_of: item.revision_of || "", slug: item.slug, question: item.question,
     answer: item.answer, category: item.category || "Purchasing", product_categories: (item.product_categories || []).join(", "),
     keywords: (item.keywords || []).join(", "), locale: item.locale || "en",
-    sources_text: (item.sources || []).map(s => `${s.title} | ${s.url}`).join("\n"),
+    sources_text: (item.sources || []).map(s => [s.title, s.url, s.publisher || "", s.verified_on || ""].join(" | ")).join("\n"),
     research_summary: item.research_summary || "", research_date: item.research_date || "",
     status: item.status === "draft" ? "draft" : "suggested", ai_generated: Boolean(item.ai_generated), featured: Boolean(item.featured)
   };
 }
 function parseSources(value: string): Source[] {
   return value.split("\n").map(line => line.trim()).filter(Boolean).map(line => {
-    const index = line.indexOf("|");
-    if (index < 1) throw new Error(`来源格式错误：${line}。请使用“来源标题 | https://网址”。`);
-    const title = line.slice(0, index).trim();
-    const url = line.slice(index + 1).trim();
+    const fields = line.split("|").map(value => value.trim());
+    const [title, url, publisher, verified_on] = fields;
+    if (!title || !url) throw new Error(`来源格式错误：${line}。请使用“来源标题 | https://网址 | 发布机构 | 核实日期”。`);
     if (!/^https?:\/\//i.test(url)) throw new Error(`来源 URL 必须以 http:// 或 https:// 开头：${url}`);
-    return { title, url };
+    return { title, url, publisher: publisher || undefined, verified_on: verified_on || undefined };
   });
 }
 
@@ -267,7 +266,7 @@ export default function FAQManager({ accessToken }: { accessToken: string }) {
         </div>
         <label className="block text-xs font-bold">参考答案 / Answer<textarea required rows={10} value={draft.answer} onChange={e => setDraft(d => ({...d, answer: e.target.value}))} className="w-full border border-slate-300 px-4 py-4 mt-2 text-sm leading-7 font-normal"/></label>
         <div className="border-t border-slate-200 pt-5 space-y-4">
-          <div><h3 className="font-black">AI 研究摘要与来源</h3><p className="text-xs text-slate-500 mt-1">每条来源一行，格式：来源名称 | https://网址。法规和认证类问题至少核对官方来源。</p></div>
+          <div><h3 className="font-black">AI 研究摘要与来源</h3><p className="text-xs text-slate-500 mt-1">每条来源一行，格式：来源名称 | https://网址 | 发布机构 | 核实日期。法规和认证类问题至少核对官方来源。</p></div>
           <label className="block text-xs font-bold">研究摘要 / 事实边界<textarea rows={4} value={draft.research_summary} onChange={e => setDraft(d => ({...d, research_summary: e.target.value}))} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/></label>
           <label className="block text-xs font-bold">来源链接<textarea rows={5} value={draft.sources_text} onChange={e => setDraft(d => ({...d, sources_text: e.target.value}))} placeholder={"EU Regulation 168/2013 | https://eur-lex.europa.eu/..."} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal font-mono"/></label>
           <label className="block text-xs font-bold">研究日期<input type="date" value={draft.research_date} onChange={e => setDraft(d => ({...d, research_date: e.target.value}))} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/></label>
