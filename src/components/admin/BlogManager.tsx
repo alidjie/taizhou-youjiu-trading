@@ -45,7 +45,7 @@ export default function BlogManager({ accessToken }: { accessToken:string }) {
   const [notice,setNotice]=useState("");
 
   async function load() {
-    const response=await fetch(`${API}/rest/v1/blog_posts?select=*&order=updated_at.desc&limit=500`,{headers:headers(accessToken),cache:"no-store"});
+    const response=await fetch(`${API}/rest/v1/blog_posts?select=*&order=updated_at.desc&limit=1000`,{headers:headers(accessToken),cache:"no-store"});
     if(!response.ok) throw new Error(await response.text() || "读取 Blog 文章失败。");
     setPosts(await response.json());
   }
