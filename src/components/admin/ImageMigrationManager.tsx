@@ -44,7 +44,7 @@ function replaceRefs(value: unknown, mapping: Map<string, string>): unknown {
   if (value && typeof value === "object") return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, replaceRefs(item, mapping)]));
   return value;
 }
-function collectReferenceKeys(rows: Snapshot["products"] | Snapshot["blogs"] | Snapshot["content"] | Snapshot["translations"]) {
+function collectReferenceKeys(rows: Array<ProductRow | BlogRow | ContentRow | TranslationRow>) {
   const keys = new Set<string>();
   for (const row of rows) visitStrings(row, value => {
     const ref = storagePathFromUrl(value);
@@ -155,7 +155,7 @@ export default function ImageMigrationManager({ accessToken }: { accessToken: st
           if (!response.ok) throw new Error(`原图下载失败（HTTP ${response.status}）`);
           const original = await response.blob();
           const webp = await convertBlob(original, item.path);
-          const newPath = item.path.replace(/\.[^.]+$/, "") + ".webp";
+          const newPath = item.path.replace(/\.[^.]+$/, "") + "-" + crypto.randomUUID() + ".webp";
           const newUrl = `${API}/storage/v1/object/public/${encodeURIComponent(item.bucket)}/${encodePath(newPath)}`;
           const upload = await fetch(`${API}/storage/v1/object/${encodeURIComponent(item.bucket)}/${encodePath(newPath)}`, {
             method: "POST", headers: { ...authHeaders(accessToken, false), "Content-Type": "image/webp", "x-upsert": "false" }, body: webp
