@@ -863,9 +863,9 @@ function addQuoteLine(){
         </div>
        </div>
        <div className="min-h-0 flex-1 overflow-auto bg-slate-200 p-2 sm:p-4">
-        <div className="mx-auto bg-white shadow-lg" style={{width:(10000/quotePreviewZoom)+"%",height:"calc(100vh - 145px)",transform:"scale("+(quotePreviewZoom/100)+")",transformOrigin:"top left"}}>
+        <div className="mx-auto" style={{width:(794*quotePreviewZoom/100)+"px",height:(1123*quotePreviewZoom/100)+"px"}}><div className="bg-white shadow-lg" style={{width:"794px",height:"1123px",transform:"scale("+(quotePreviewZoom/100)+")",transformOrigin:"top left"}}>
          <iframe ref={quotePreviewFrame} title="Quotation PDF preview" srcDoc={quotePreviewHtml} className="h-full w-full border-0 bg-white"/>
-        </div>
+        </div></div>
        </div>
       </div>
      </div>}
@@ -972,9 +972,9 @@ function addQuoteLine(){
          </div>
         </div>
         <div className="min-h-0 flex-1 overflow-auto bg-slate-200 p-2 sm:p-4">
-         <div className="mx-auto bg-white shadow-lg" style={{width:(10000/docPreviewZoom)+"%",height:"calc(100vh - 145px)",transform:"scale("+(docPreviewZoom/100)+")",transformOrigin:"top left"}}>
+         <div className="mx-auto" style={{width:(794*docPreviewZoom/100)+"px",height:(1123*docPreviewZoom/100)+"px"}}><div className="bg-white shadow-lg" style={{width:"794px",height:"1123px",transform:"scale("+(docPreviewZoom/100)+")",transformOrigin:"top left"}}>
           <iframe ref={docPreviewFrame} title="Trade document preview" srcDoc={docPreviewHtml} className="h-full w-full border-0 bg-white"/>
-         </div>
+         </div></div>
         </div>
        </div>
       </div>}
