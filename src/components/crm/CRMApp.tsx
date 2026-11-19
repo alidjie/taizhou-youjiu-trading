@@ -136,14 +136,15 @@ export default function CRMApp(){
   try{setDocItems(await req<DocItem[]>("crm_trade_document_items?select=id,document_id,line_no,item_fields&document_id=eq."+encodeURIComponent(doc.id)+"&order=line_no.asc&limit=500"));}
   catch(e){setError(e instanceof Error?e.message:"单据明细加载失败。");}
  }
- async function createTradeDocument(type:"CI"|"PI"|"PL"){
-  if(!docOrderId){setError("请先选择一张订单。");return;}
-  setBusy(true);setError("");setNotice("");
+ async function createTradeDocument(type:"CI"|"PI"|"PL",orderIdOverride?:string){
+  const targetOrderId=orderIdOverride||docOrderId;
+  if(!targetOrderId){setError("请先选择一张订单。");return;}
+  setDocOrderId(targetOrderId);setBusy(true);setError("");setNotice("");
   try{
-   const result=await req<{id:string;document_no:string;existing:boolean}>("rpc/crm_create_trade_document",{method:"POST",body:JSON.stringify({p_order_id:docOrderId,p_document_type:type})});
+   const result=await req<{id:string;document_no:string;existing:boolean}>("rpc/crm_create_trade_document",{method:"POST",body:JSON.stringify({p_order_id:targetOrderId,p_document_type:type})});
    const rows=await req<Doc[]>("crm_trade_documents?select=*&id=eq."+encodeURIComponent(result.id)+"&limit=1");
    if(rows[0])await openTradeDocument(rows[0]);
-   await loadDocs();
+   await loadDocs();setModule("documents");
    setNotice(result.existing?"该订单已有此类单据，已打开原单据。":"已从订单生成 "+type+" 单据："+result.document_no);
   }catch(e){setError(e instanceof Error?e.message:"生成外贸单据失败。");}
   finally{setBusy(false);}
@@ -851,14 +852,14 @@ function addQuoteLine(){
         <td className="px-3 py-3 font-bold">{o.order_no}</td><td className="px-3 py-3">{o.buyer_snapshot?.company_name||"—"}<div className="text-xs text-slate-400">{o.buyer_snapshot?.country||""}</div></td>
         <td className="px-3 py-3">{labels[o.status]||o.status}</td><td className="px-3 py-3">{cash(o.total_usd,"USD")}</td><td className="px-3 py-3">{cash(o.total_cny,"CNY")}</td>
         <td className="px-3 py-3">{d(o.order_date)}</td><td className="px-3 py-3">{d(o.expected_delivery_date)}</td>
-        <td className="px-3 py-3"><button onClick={()=>void openOrder(o)} className="text-xs font-bold text-emerald-700">查看 / 更新进度 →</button></td>
+        <td className="px-3 py-3"><div className="flex flex-wrap gap-2"><button onClick={()=>void openOrder(o)} className="text-xs font-bold text-emerald-700">查看 / 更新进度</button><button onClick={()=>{setDocOrderId(o.id);setModule("documents");}} className="text-xs font-bold text-sky-700">外贸单据</button></div></td>
        </tr>)}
        {!orders.length&&<tr><td colSpan={8} className="px-3 py-8 text-center text-slate-400">暂无订单。可先在报价单中将有效报价转为订单。</td></tr>}
        </tbody>
       </table></div>
      </div>
      {selectedOrder&&<div className={panel}>
-      <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-black">{selectedOrder.order_no}</h3><p className="mt-1 text-sm text-slate-500">{selectedOrder.buyer_snapshot?.company_name||"客户信息"} · {labels[selectedOrder.status]||selectedOrder.status}</p></div><button onClick={()=>setSelectedOrder(null)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">关闭详情</button></div>
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-black">{selectedOrder.order_no}</h3><p className="mt-1 text-sm text-slate-500">{selectedOrder.buyer_snapshot?.company_name||"客户信息"} · {labels[selectedOrder.status]||selectedOrder.status}</p></div><div className="flex flex-wrap gap-2"><button type="button" disabled={busy} onClick={()=>void createTradeDocument("CI",selectedOrder.id)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold">生成 CI</button><button type="button" disabled={busy} onClick={()=>void createTradeDocument("PI",selectedOrder.id)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold">生成 PI</button><button type="button" disabled={busy} onClick={()=>void createTradeDocument("PL",selectedOrder.id)} className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold">生成 PL</button><button type="button" onClick={()=>setSelectedOrder(null)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">关闭详情</button></div></div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
        <div className="rounded-lg bg-slate-50 p-3"><div className="text-xs text-slate-500">USD 金额</div><div className="mt-1 font-black">{cash(selectedOrder.total_usd,"USD")}</div></div>
        <div className="rounded-lg bg-slate-50 p-3"><div className="text-xs text-slate-500">CNY 金额</div><div className="mt-1 font-black">{cash(selectedOrder.total_cny,"CNY")}</div></div>
