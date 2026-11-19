@@ -16,12 +16,14 @@ function detectLocale(request: NextRequest): Locale {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   // Resolve the public hostname reliably behind Vercel/proxy layers.
-  const rawHost = request.headers.get("x-forwarded-host") || request.headers.get("host") || request.nextUrl.hostname;
-  const hostname = rawHost.split(",")[0].trim().split(":")[0].toLowerCase();
+  const hostCandidates = [request.headers.get("host"), request.headers.get("x-forwarded-host"), request.nextUrl.hostname]
+    .filter((value): value is string => Boolean(value))
+    .flatMap(value => value.split(","))
+    .map(value => value.trim().split(":")[0].toLowerCase());
 
   // The CRM runs on its own subdomain. Internally map its root to /crm
   // without exposing /crm in the browser URL or applying the public-site locale redirect.
-  if (hostname === "crm.almcp.com") {
+  if (hostCandidates.includes("crm.almcp.com")) {
     if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname === "/favicon.ico" || /\.[^/]+$/.test(pathname)) {
       return NextResponse.next();
     }
