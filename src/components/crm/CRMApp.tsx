@@ -695,7 +695,6 @@ function addQuoteLine(){
         <div><h4 className="font-bold">关联订单</h4><div className="mt-3 space-y-2">{relatedOrders.map(o=><div key={o.id} className="flex flex-wrap justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm"><span className="font-semibold">{o.order_no} · {labels[o.status]||o.status}</span><span>{cash(o.total_usd,"USD")} / {cash(o.total_cny,"CNY")}</span></div>)}{!relatedOrders.length&&<p className="text-sm text-slate-400">暂无关联订单。</p>}</div></div>
        </div>
 
-      </div>
       </div>}
      </div>}
 
