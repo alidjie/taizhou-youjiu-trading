@@ -660,7 +660,7 @@ function addQuoteLine(){
 
     {module==="dashboard"&&profile.role!=="factory"&&<div className="space-y-5">
      <div><h2 className="text-xl font-black">销售经营概览</h2><p className="mt-1 text-sm text-slate-500">统计范围由当前账号的数据权限自动控制；已取消订单不计入业绩。</p></div>
-     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
       {[["客户总数",kpis.customers.toLocaleString()],["成交客户",kpis.won.toLocaleString()],["客户转化率",kpis.conversion.toFixed(2)+"%"],["订单数量",kpis.orders.toLocaleString()],["订单总额 USD",cash(kpis.usd,"USD")],["订单总额 CNY",cash(kpis.cny,"CNY")]].map(([l,v])=><div key={l} className={panel}><div className="text-xs text-slate-500">{l}</div><div className="mt-2 text-2xl font-black tabular-nums">{v}</div></div>)}
      </div>
      <div className={panel}><div className="mb-4 flex items-center justify-between"><h3 className="font-bold">销售人员业绩对比</h3><span className="text-xs text-slate-400">USD / CNY 分开统计</span></div><div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["业务员","订单 USD","订单 CNY","订单数","客户数","成交客户","转化率"].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead><tbody>{perf.map(p=><tr key={p.sales_user_id} className="border-t border-slate-100"><td className="px-3 py-3 font-semibold">{p.full_name} <span className="text-xs text-slate-400">({p.username})</span></td><td className="px-3 py-3">{cash(p.order_total_usd,"USD")}</td><td className="px-3 py-3">{cash(p.order_total_cny,"CNY")}</td><td className="px-3 py-3">{p.order_count}</td><td className="px-3 py-3">{p.customer_count}</td><td className="px-3 py-3">{p.won_customer_count}</td><td className="px-3 py-3 font-bold">{Number(p.conversion_rate).toFixed(2)}%</td></tr>)}{!perf.length&&<tr><td colSpan={7} className="px-3 py-10 text-center text-slate-400">暂无销售业绩数据</td></tr>}</tbody></table></div></div>
@@ -989,7 +989,7 @@ function addQuoteLine(){
       {accountOpen&&<form onSubmit={createAccount} className="mt-5 border-t border-slate-200 pt-5">
        <h3 className="font-bold">创建 CRM 用户</h3>
        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <label className="text-sm">用户名<input required value={accountDraft.username} onChange={e=>setAccountDraft(v=>({...v,username:e.target.value.toLowerCase()}))} className={input+" mt-1"}/></label>
+        <label className="text-sm">用户名<input required pattern="[a-z0-9][a-z0-9._-]{2,31}" title="3–32位小写英文字母、数字、点、下划线或连字符；以字母或数字开头" value={accountDraft.username} onChange={e=>setAccountDraft(v=>({...v,username:e.target.value.toLowerCase()}))} className={input+" mt-1"}/><span className="mt-1 block text-xs text-slate-500">3–32位；小写字母、数字、点、下划线、连字符。</span></label>
         <label className="text-sm">姓名<input required value={accountDraft.full_name} onChange={e=>setAccountDraft(v=>({...v,full_name:e.target.value}))} className={input+" mt-1"}/></label>
         <label className="text-sm">登录邮箱<input required type="email" value={accountDraft.email} onChange={e=>setAccountDraft(v=>({...v,email:e.target.value}))} className={input+" mt-1"}/></label>
         <label className="text-sm">初始密码（至少10位）<input required minLength={10} type="password" value={accountDraft.password} onChange={e=>setAccountDraft(v=>({...v,password:e.target.value}))} className={input+" mt-1"}/></label>
@@ -1002,7 +1002,7 @@ function addQuoteLine(){
       {editingAccount&&<form onSubmit={saveAccountEdit} className="mt-5 border-t border-slate-200 pt-5">
        <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="font-bold">编辑账户：{editingAccount.username}</h3><button type="button" onClick={()=>setEditingAccount(null)} className="text-sm text-slate-500">取消编辑</button></div>
        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <label className="text-sm">用户名<input required value={editAccountDraft.username} onChange={e=>setEditAccountDraft(v=>({...v,username:e.target.value.toLowerCase()}))} className={input+" mt-1"}/></label>
+        <label className="text-sm">用户名<input required pattern="[a-z0-9][a-z0-9._-]{2,31}" title="3–32位小写英文字母、数字、点、下划线或连字符；以字母或数字开头" value={editAccountDraft.username} onChange={e=>setEditAccountDraft(v=>({...v,username:e.target.value.toLowerCase()}))} className={input+" mt-1"}/><span className="mt-1 block text-xs text-slate-500">3–32位；小写字母、数字、点、下划线、连字符。</span></label>
         <label className="text-sm">姓名<input required value={editAccountDraft.full_name} onChange={e=>setEditAccountDraft(v=>({...v,full_name:e.target.value}))} className={input+" mt-1"}/></label>
         <label className="text-sm">登录邮箱<input required type="email" value={editAccountDraft.email} onChange={e=>setEditAccountDraft(v=>({...v,email:e.target.value.toLowerCase()}))} className={input+" mt-1"}/></label>
         <label className="text-sm">角色<select value={editAccountDraft.role} onChange={e=>setEditAccountDraft(v=>({...v,role:e.target.value,factory_id:e.target.value==="factory"?v.factory_id:""}))} className={input+" mt-1"}><option value="sales">销售员</option><option value="factory">工厂用户</option><option value="admin">管理员</option></select></label>
@@ -1025,7 +1025,7 @@ function addQuoteLine(){
         <td className="px-3 py-3">{factories.find(f=>f.id===a.factory_id)?.name||"—"}</td><td className="px-3 py-3">{a.is_active?"正常":"禁用"}</td><td className="px-3 py-3">{a.created_at?new Date(a.created_at).toLocaleDateString("zh-CN"):"—"}</td>
         <td className="px-3 py-3"><div className="flex flex-wrap gap-2">
          <button onClick={()=>beginEditAccount(a)} className="text-xs font-bold text-sky-700">编辑</button>
-         <button onClick={()=>void adminAction("set_active",{user_id:a.user_id,is_active:!a.is_active}).then(()=>loadAccounts()).catch(e=>setError(e.message))} className="text-xs font-bold text-emerald-700">{a.is_active?"禁用":"启用"}</button>
+         <button disabled={a.user_id===userId&&a.is_active} title={a.user_id===userId&&a.is_active?"不能禁用当前登录的管理员账户":""} onClick={()=>void adminAction("set_active",{user_id:a.user_id,is_active:!a.is_active}).then(()=>loadAccounts()).catch(e=>setError(e.message))} className="text-xs font-bold text-emerald-700 disabled:cursor-not-allowed disabled:opacity-35">{a.is_active?"禁用":"启用"}</button>
          <button onClick={()=>{const value=window.prompt("请输入新的初始密码（至少10位）");if(value&&value.length>=10)void adminAction("reset_password",{user_id:a.user_id,password:value}).then(()=>setNotice("密码已重置。请安全地将新密码交付给用户。")).catch(e=>setError(e.message));else if(value)setError("新密码至少需要10位。");}} className="text-xs font-bold text-slate-600">重置密码</button>
          {a.role!=="admin"&&<button onClick={()=>{if(window.confirm("确认删除该账号？若有业务历史记录，系统会阻止删除并建议禁用。"))void adminAction("delete_user",{user_id:a.user_id}).then(()=>loadAccounts()).catch(e=>setError(e.message));}} className="text-xs font-bold text-red-700">删除</button>}
         </div></td>
