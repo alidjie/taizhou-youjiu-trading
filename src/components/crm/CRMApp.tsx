@@ -50,7 +50,7 @@ export default function CRMApp(){
  const [accountOpen,setAccountOpen]=useState(false),[accountDraft,setAccountDraft]=useState({username:"",email:"",full_name:"",password:"",role:"sales",factory_id:""});
  const [accountSearch,setAccountSearch]=useState(""),[accountRoleFilter,setAccountRoleFilter]=useState("all"),[editingAccount,setEditingAccount]=useState<Profile|null>(null),[editAccountDraft,setEditAccountDraft]=useState({username:"",email:"",full_name:"",role:"sales",factory_id:""});
  const [quotes,setQuotes]=useState<Quote[]>([]),[selectedQuote,setSelectedQuote]=useState<Quote|null>(null),[quoteDetailItems,setQuoteDetailItems]=useState<QuoteItem[]>([]),[quoteEmailLogs,setQuoteEmailLogs]=useState<QuoteEmailLog[]>([]),[quoteEditDraft,setQuoteEditDraft]=useState({valid_until:"",incoterm:"FOB",loading_port:"",destination_port:"",payment_terms:"",delivery_terms:"",packaging_terms:"",warranty_terms:"",remarks:""}),[quoteOpen,setQuoteOpen]=useState(false),[quoteCustomerId,setQuoteCustomerId]=useState(""),[quoteValidUntil,setQuoteValidUntil]=useState(""),[quoteIncoterm,setQuoteIncoterm]=useState("FOB"),[quoteLoadingPort,setQuoteLoadingPort]=useState(""),[quoteDestinationPort,setQuoteDestinationPort]=useState(""),[quotePaymentTerms,setQuotePaymentTerms]=useState(""),[quoteDeliveryTerms,setQuoteDeliveryTerms]=useState(""),[quoteRemarks,setQuoteRemarks]=useState(""),[quoteItems,setQuoteItems]=useState<QuoteLineDraft[]>([]),[quoteLineDraft,setQuoteLineDraft]=useState({product_id:"",price_basis:"SKD_USD",quantity:"1"}),[orders,setOrders]=useState<Order[]>([]),[selectedOrder,setSelectedOrder]=useState<Order|null>(null),[orderUpdates,setOrderUpdates]=useState<OrderUpdate[]>([]),[orderDraft,setOrderDraft]=useState({status:"ordered",progress_description:"",expected_delivery_date:"",actual_delivery_date:""}),[docs,setDocs]=useState<Doc[]>([]),[selectedDoc,setSelectedDoc]=useState<Doc|null>(null),[docItems,setDocItems]=useState<DocItem[]>([]),[docOrderId,setDocOrderId]=useState(""),[docDraft,setDocDraft]=useState({document_no:"",document_date:"",contract_no:"",shipping_marks:"",incoterm:"",payment_terms:"",origin:"China",remarks:"",loading_port:"",destination_port:"",container_no:"",seal_no:"",shipping_date:"",gross_weight:"",net_weight:"",volume:"",package_count:"",declaration:""}),[accounts,setAccounts]=useState<Profile[]>([]);
- const [perf,setPerf]=useState<Perf[]>([]),[kpis,setKpis]=useState({customers:0,won:0,usd:0,cny:0,orders:0});
+ const [perf,setPerf]=useState<Perf[]>([]),[kpis,setKpis]=useState({customers:0,won:0,conversion:0,usd:0,cny:0,orders:0});
   const [branding,setBranding]=useState<Branding|null>(null),[brandingDraft,setBrandingDraft]=useState({legal_name:"",address:"",telephone:"",email:"",website:"",bank_name:"",bank_address:"",beneficiary:"",account_number:"",swift_code:"",logo_url:"",stamp_url:""}),[brandingLogo,setBrandingLogo]=useState<File|null>(null),[brandingStamp,setBrandingStamp]=useState<File|null>(null);
  const [newPassword,setNewPassword]=useState(""),[confirmPassword,setConfirmPassword]=useState("");
  const [quoteOriginalItemIds,setQuoteOriginalItemIds]=useState<string[]>([]),[quotePreviewHtml,setQuotePreviewHtml]=useState(""),[quotePreviewOpen,setQuotePreviewOpen]=useState(false),[quotePreviewZoom,setQuotePreviewZoom]=useState(100),[quotePreviewFullScreen,setQuotePreviewFullScreen]=useState(false);
@@ -80,6 +80,17 @@ export default function CRMApp(){
  },[]);
 
  useEffect(()=>{
+  const lockBody=drawer||quotePreviewOpen||docPreviewOpen;
+  if(!lockBody)return;
+  const previous=document.body.style.overflow;
+  document.body.style.overflow="hidden";
+  const onKey=(event:KeyboardEvent)=>{
+   if(event.key==="Escape"){setDrawer(false);setQuotePreviewOpen(false);setDocPreviewOpen(false);setQuotePreviewFullScreen(false);setDocPreviewFullScreen(false);}
+  };
+  window.addEventListener("keydown",onKey);
+  return()=>{document.body.style.overflow=previous;window.removeEventListener("keydown",onKey);};
+ },[drawer,quotePreviewOpen,docPreviewOpen]);
+ useEffect(()=>{
   let active=true;
   try{const saved=localStorage.getItem(SESSION_KEY);const value=saved?JSON.parse(saved) as {refresh_token?:string}:null;
    if(value?.refresh_token)void(async()=>{try{const r=await fetch(API+"/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify({refresh_token:value.refresh_token})});const j=await r.json() as {access_token?:string;refresh_token?:string};if(!r.ok||!j.access_token||!j.refresh_token)throw new Error("expired");if(active)await establish(j.access_token,j.refresh_token);}catch{localStorage.removeItem(SESSION_KEY);if(active)setError("登录状态已过期，请重新登录。");}})();
@@ -91,8 +102,13 @@ export default function CRMApp(){
  async function logout(){try{if(token)await fetch(API+"/auth/v1/logout",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+token}});}finally{localStorage.removeItem(SESSION_KEY);setToken("");setUserId("");setProfile(null);setCustomers([]);setProducts([]);setSelected(null);setNotice("已安全退出。");}}
 
  const loadDashboard=useCallback(async()=>{try{
-  const [p,c,o]=await Promise.all([req<Perf[]>("crm_sales_performance?select=*&order=order_total_usd.desc"),req<Array<{id:string;status:string}>>("crm_customers?select=id,status&limit=5000"),req<Array<{id:string;total_usd:number;total_cny:number}>>("crm_orders?select=id,total_usd,total_cny&status=neq.cancelled&limit=5000")]);
-  setPerf(p);setKpis({customers:c.length,won:c.filter(x=>x.status==="won").length,usd:o.reduce((s,x)=>s+Number(x.total_usd||0),0),cny:o.reduce((s,x)=>s+Number(x.total_cny||0),0),orders:o.length});
+  const p=await req<Perf[]>("crm_sales_performance?select=*&order=order_total_usd.desc");
+  const customers=p.reduce((s,x)=>s+Number(x.customer_count||0),0);
+  const won=p.reduce((s,x)=>s+Number(x.won_customer_count||0),0);
+  const orders=p.reduce((s,x)=>s+Number(x.order_count||0),0);
+  const usd=p.reduce((s,x)=>s+Number(x.order_total_usd||0),0);
+  const cny=p.reduce((s,x)=>s+Number(x.order_total_cny||0),0);
+  setPerf(p);setKpis({customers,won,conversion:customers?won/customers*100:0,usd,cny,orders});
  }catch(e){setError(e instanceof Error?e.message:"看板加载失败。");}},[req]);
  const loadCustomers=useCallback(async()=>{setBusy(true);try{setCustomers(await req<Customer[]>("crm_customers?select=*&order=updated_at.desc&limit=1000"));}catch(e){setError(e instanceof Error?e.message:"客户加载失败。");}finally{setBusy(false);}},[req]);
  const loadProducts=useCallback(async()=>{setBusy(true);try{const [rows,priceRows,factoryRows,attributeRows]=await Promise.all([req<Product[]>("products?select=*&order=created_at.desc&limit=2000"),req<ProductPrice[]>("crm_product_prices?select=product_id,factory_id,skd_price_usd,skd_price_cny,ckd_price_usd,ckd_price_cny,packing_quantity_40hq&limit=2000"),req<Factory[]>("crm_factories?select=id,factory_code,name,status&order=name"),req<AttributeDefinition[]>("crm_product_attribute_definitions?select=*&order=factory_id.asc,sort_order.asc&limit=500")]);setProducts(rows);setProductPrices(priceRows);setFactories(factoryRows);setAttributeDefinitions(attributeRows);}catch(e){setError(e instanceof Error?e.message:"产品加载失败。");}finally{setBusy(false);}},[req]);
@@ -357,7 +373,7 @@ export default function CRMApp(){
    const product={
     id,slug:slug(productDraft.model_code||productDraft.name)||id,name:productDraft.name.trim(),
     model_code:productDraft.model_code.trim()||null,category:productDraft.category,factory_id:factoryId,
-    published:false,hero_image:imageUrl,image:imageUrl,gallery,specs:Object.entries(specifications).map(([k,v])=>k+": "+v),
+    published:productDraft.id?(products.find(x=>x.id===id)?.published??false):false,hero_image:imageUrl,image:imageUrl,gallery,specs:Object.entries(specifications).map(([k,v])=>k+": "+v),
     features:parseLines(productDraft.features_text),specifications,certifications:parseLines(productDraft.certifications_text),
     short_description:productDraft.short_description.trim()||null,description:productDraft.description.trim()||null,
     featured:productDraft.featured,sort_order:Number(productDraft.sort_order)||0,custom_attributes:productCustomAttributes
@@ -645,7 +661,7 @@ function addQuoteLine(){
     {module==="dashboard"&&profile.role!=="factory"&&<div className="space-y-5">
      <div><h2 className="text-xl font-black">销售经营概览</h2><p className="mt-1 text-sm text-slate-500">统计范围由当前账号的数据权限自动控制；已取消订单不计入业绩。</p></div>
      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-      {[["客户总数",kpis.customers.toLocaleString()],["成交客户",kpis.won.toLocaleString()],["订单数量",kpis.orders.toLocaleString()],["订单总额 USD",cash(kpis.usd,"USD")],["订单总额 CNY",cash(kpis.cny,"CNY")]].map(([l,v])=><div key={l} className={panel}><div className="text-xs text-slate-500">{l}</div><div className="mt-2 text-2xl font-black tabular-nums">{v}</div></div>)}
+      {[["客户总数",kpis.customers.toLocaleString()],["成交客户",kpis.won.toLocaleString()],["客户转化率",kpis.conversion.toFixed(2)+"%"],["订单数量",kpis.orders.toLocaleString()],["订单总额 USD",cash(kpis.usd,"USD")],["订单总额 CNY",cash(kpis.cny,"CNY")]].map(([l,v])=><div key={l} className={panel}><div className="text-xs text-slate-500">{l}</div><div className="mt-2 text-2xl font-black tabular-nums">{v}</div></div>)}
      </div>
      <div className={panel}><div className="mb-4 flex items-center justify-between"><h3 className="font-bold">销售人员业绩对比</h3><span className="text-xs text-slate-400">USD / CNY 分开统计</span></div><div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["业务员","订单 USD","订单 CNY","订单数","客户数","成交客户","转化率"].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead><tbody>{perf.map(p=><tr key={p.sales_user_id} className="border-t border-slate-100"><td className="px-3 py-3 font-semibold">{p.full_name} <span className="text-xs text-slate-400">({p.username})</span></td><td className="px-3 py-3">{cash(p.order_total_usd,"USD")}</td><td className="px-3 py-3">{cash(p.order_total_cny,"CNY")}</td><td className="px-3 py-3">{p.order_count}</td><td className="px-3 py-3">{p.customer_count}</td><td className="px-3 py-3">{p.won_customer_count}</td><td className="px-3 py-3 font-bold">{Number(p.conversion_rate).toFixed(2)}%</td></tr>)}{!perf.length&&<tr><td colSpan={7} className="px-3 py-10 text-center text-slate-400">暂无销售业绩数据</td></tr>}</tbody></table></div></div>
     </div>}
