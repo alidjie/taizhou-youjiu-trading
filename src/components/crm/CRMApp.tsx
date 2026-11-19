@@ -38,6 +38,7 @@ export default function CRMApp(){
  const [products,setProducts]=useState<Product[]>([]),[productPrices,setProductPrices]=useState<ProductPrice[]>([]),[factories,setFactories]=useState<Factory[]>([]),[productSearch,setProductSearch]=useState(""),[productOpen,setProductOpen]=useState(false);
  const [productDraft,setProductDraft]=useState({name:"",model_code:"",category:"electric-motorcycles",factory_id:"",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
  const [factoryOpen,setFactoryOpen]=useState(false),[factoryDraft,setFactoryDraft]=useState({factory_code:"",name:"",contact_name:"",email:"",phone:"",address:""});
+ const [accountOpen,setAccountOpen]=useState(false),[accountDraft,setAccountDraft]=useState({username:"",email:"",full_name:"",password:"",role:"sales",factory_id:""});
  const [quotes,setQuotes]=useState<Quote[]>([]),[orders,setOrders]=useState<Order[]>([]),[docs,setDocs]=useState<Doc[]>([]),[accounts,setAccounts]=useState<Profile[]>([]);
  const [perf,setPerf]=useState<Perf[]>([]),[kpis,setKpis]=useState({customers:0,won:0,usd:0,cny:0,orders:0});
  const [newPassword,setNewPassword]=useState(""),[confirmPassword,setConfirmPassword]=useState("");
