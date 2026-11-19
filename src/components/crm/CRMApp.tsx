@@ -15,7 +15,8 @@ type ProductPrice = { product_id:string; factory_id:string; skd_price_usd:number
 type Factory = { id:string; factory_code:string; name:string; status:string };
 type Quote = { id:string; quote_no:string; status:string; total_usd:number; total_cny:number; created_at:string };
 type QuoteLineDraft = { id:string; product_id:string; price_basis:string; quantity:string };
-type Order = { id:string; order_no:string; status:string; total_usd:number; total_cny:number; order_date:string; expected_delivery_date:string|null };
+type Order = { id:string; order_no:string; customer_id:string; status:string; total_usd:number; total_cny:number; order_date:string; expected_delivery_date:string|null; actual_delivery_date:string|null; delivery_progress:string|null; buyer_snapshot:{company_name?:string;contact_name?:string;country?:string} };
+type OrderUpdate = { id:string; order_id:string; status:string|null; progress_description:string; expected_delivery_date:string|null; actual_delivery_date:string|null; created_at:string };
 type Doc = { id:string; document_type:string; document_no:string; status:string; document_date:string; order_id:string };
 type Perf = { sales_user_id:string; username:string; full_name:string; order_total_usd:number; order_total_cny:number; order_count:number; customer_count:number; won_customer_count:number; conversion_rate:number };
 type Module = "dashboard"|"customers"|"products"|"quotes"|"orders"|"documents"|"accounts"|"branding"|"password";
@@ -41,7 +42,7 @@ export default function CRMApp(){
  const [factoryOpen,setFactoryOpen]=useState(false),[factoryDraft,setFactoryDraft]=useState({factory_code:"",name:"",contact_name:"",email:"",phone:"",address:""});
  const [accountOpen,setAccountOpen]=useState(false),[accountDraft,setAccountDraft]=useState({username:"",email:"",full_name:"",password:"",role:"sales",factory_id:""});
  const [accountSearch,setAccountSearch]=useState(""),[accountRoleFilter,setAccountRoleFilter]=useState("all"),[editingAccount,setEditingAccount]=useState<Profile|null>(null),[editAccountDraft,setEditAccountDraft]=useState({username:"",email:"",full_name:"",role:"sales",factory_id:""});
- const [quotes,setQuotes]=useState<Quote[]>([]),[quoteOpen,setQuoteOpen]=useState(false),[quoteCustomerId,setQuoteCustomerId]=useState(""),[quoteValidUntil,setQuoteValidUntil]=useState(""),[quoteIncoterm,setQuoteIncoterm]=useState("FOB"),[quoteLoadingPort,setQuoteLoadingPort]=useState(""),[quoteDestinationPort,setQuoteDestinationPort]=useState(""),[quotePaymentTerms,setQuotePaymentTerms]=useState(""),[quoteDeliveryTerms,setQuoteDeliveryTerms]=useState(""),[quoteRemarks,setQuoteRemarks]=useState(""),[quoteItems,setQuoteItems]=useState<QuoteLineDraft[]>([]),[quoteLineDraft,setQuoteLineDraft]=useState({product_id:"",price_basis:"SKD_USD",quantity:"1"}),[orders,setOrders]=useState<Order[]>([]),[docs,setDocs]=useState<Doc[]>([]),[accounts,setAccounts]=useState<Profile[]>([]);
+ const [quotes,setQuotes]=useState<Quote[]>([]),[quoteOpen,setQuoteOpen]=useState(false),[quoteCustomerId,setQuoteCustomerId]=useState(""),[quoteValidUntil,setQuoteValidUntil]=useState(""),[quoteIncoterm,setQuoteIncoterm]=useState("FOB"),[quoteLoadingPort,setQuoteLoadingPort]=useState(""),[quoteDestinationPort,setQuoteDestinationPort]=useState(""),[quotePaymentTerms,setQuotePaymentTerms]=useState(""),[quoteDeliveryTerms,setQuoteDeliveryTerms]=useState(""),[quoteRemarks,setQuoteRemarks]=useState(""),[quoteItems,setQuoteItems]=useState<QuoteLineDraft[]>([]),[quoteLineDraft,setQuoteLineDraft]=useState({product_id:"",price_basis:"SKD_USD",quantity:"1"}),[orders,setOrders]=useState<Order[]>([]),[selectedOrder,setSelectedOrder]=useState<Order|null>(null),[orderUpdates,setOrderUpdates]=useState<OrderUpdate[]>([]),[orderDraft,setOrderDraft]=useState({status:"ordered",progress_description:"",expected_delivery_date:"",actual_delivery_date:""}),[docs,setDocs]=useState<Doc[]>([]),[accounts,setAccounts]=useState<Profile[]>([]);
  const [perf,setPerf]=useState<Perf[]>([]),[kpis,setKpis]=useState({customers:0,won:0,usd:0,cny:0,orders:0});
  const [newPassword,setNewPassword]=useState(""),[confirmPassword,setConfirmPassword]=useState("");
 
@@ -84,8 +85,31 @@ export default function CRMApp(){
  const loadCustomers=useCallback(async()=>{setBusy(true);try{setCustomers(await req<Customer[]>("crm_customers?select=*&order=updated_at.desc&limit=1000"));}catch(e){setError(e instanceof Error?e.message:"客户加载失败。");}finally{setBusy(false);}},[req]);
  const loadProducts=useCallback(async()=>{setBusy(true);try{const [rows,priceRows,factoryRows]=await Promise.all([req<Product[]>("products?select=id,slug,name,model_code,category,factory_id,image,hero_image,published,updated_at&order=created_at.desc&limit=2000"),req<ProductPrice[]>("crm_product_prices?select=product_id,factory_id,skd_price_usd,skd_price_cny,ckd_price_usd,ckd_price_cny,packing_quantity_40hq&limit=2000"),req<Factory[]>("crm_factories?select=id,factory_code,name,status&order=name")]);setProducts(rows);setProductPrices(priceRows);setFactories(factoryRows);}catch(e){setError(e instanceof Error?e.message:"产品加载失败。");}finally{setBusy(false);}},[req]);
  const loadQuotes=useCallback(async()=>{try{setQuotes(await req<Quote[]>("crm_quotes?select=id,quote_no,status,total_usd,total_cny,created_at&order=created_at.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"报价加载失败。");}},[req]);
- const loadOrders=useCallback(async()=>{try{setOrders(await req<Order[]>("crm_orders?select=id,order_no,status,total_usd,total_cny,order_date,expected_delivery_date&order=order_date.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"订单加载失败。");}},[req]);
- const loadDocs=useCallback(async()=>{try{setDocs(await req<Doc[]>("crm_trade_documents?select=id,document_type,document_no,status,document_date,order_id&order=document_date.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"单据加载失败。");}},[req]);
+ const loadOrders=useCallback(async()=>{try{setOrders(await req<Order[]>("crm_orders?select=id,order_no,customer_id,status,total_usd,total_cny,order_date,expected_delivery_date,actual_delivery_date,delivery_progress,buyer_snapshot&order=order_date.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"订单加载失败。");}},[req]);
+ async function openOrder(order:Order){
+   setSelectedOrder(order);
+   setOrderDraft({status:order.status,progress_description:order.delivery_progress||"",expected_delivery_date:order.expected_delivery_date||"",actual_delivery_date:order.actual_delivery_date||""});
+   try{setOrderUpdates(await req<OrderUpdate[]>("crm_order_updates?select=id,order_id,status,progress_description,expected_delivery_date,actual_delivery_date,created_at&order_id=eq."+encodeURIComponent(order.id)+"&order=created_at.desc&limit=200"));}
+   catch(e){setError(e instanceof Error?e.message:"订单进度记录加载失败。");}
+  }
+  async function saveOrderProgress(e:React.FormEvent){
+   e.preventDefault();if(!selectedOrder)return;
+   if(!orderDraft.progress_description.trim()){setError("请填写本次订单进度说明。");return;}
+   setBusy(true);setError("");setNotice("");
+   const expected=orderDraft.expected_delivery_date||null;
+   const actual=orderDraft.actual_delivery_date||null;
+   try{
+    await req("crm_orders?id=eq."+encodeURIComponent(selectedOrder.id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({status:orderDraft.status,delivery_progress:orderDraft.progress_description.trim(),expected_delivery_date:expected,actual_delivery_date:actual})});
+    await req("crm_order_updates",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({order_id:selectedOrder.id,updated_by:userId,status:orderDraft.status,progress_description:orderDraft.progress_description.trim(),expected_delivery_date:expected,actual_delivery_date:actual})});
+    setNotice("订单状态与交付进度已更新。");
+    await loadOrders();
+    const updated={...selectedOrder,status:orderDraft.status,delivery_progress:orderDraft.progress_description.trim(),expected_delivery_date:expected,actual_delivery_date:actual};
+    setSelectedOrder(updated);
+    await openOrder(updated);
+   }catch(e){setError(e instanceof Error?e.message:"订单进度保存失败。");}
+   finally{setBusy(false);}
+  }
+  const loadDocs=useCallback(async()=>{try{setDocs(await req<Doc[]>("crm_trade_documents?select=id,document_type,document_no,status,document_date,order_id&order=document_date.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"单据加载失败。");}},[req]);
  const loadAccounts=useCallback(async()=>{try{const [rows,fs]=await Promise.all([req<Profile[]>("crm_user_profiles?select=user_id,username,email,full_name,role,factory_id,is_active,created_at&order=created_at.desc"),req<Factory[]>("crm_factories?select=id,factory_code,name,status&order=name")]);setAccounts(rows);setFactories(fs);}catch(e){setError(e instanceof Error?e.message:"账号加载失败。");}},[req]);
  useEffect(()=>{if(!profile)return;if(module==="dashboard")void loadDashboard();if(module==="customers")void loadCustomers();if(module==="products")void loadProducts();if(module==="quotes"){void loadQuotes();void loadCustomers();void loadProducts();}if(module==="orders")void loadOrders();if(module==="documents")void loadDocs();if(module==="accounts"&&profile.role==="admin")void loadAccounts();},[module,profile,loadDashboard,loadCustomers,loadProducts,loadQuotes,loadOrders,loadDocs,loadAccounts]);
 
@@ -258,7 +282,41 @@ function addQuoteLine(){
       <p className="text-xs text-slate-500">报价价格来自独立工厂价格表；保存时服务端重新读取对应价格，不接受浏览器传入的自定义单价。</p>
      </form>}
      <div className={panel}><div className="mb-4 flex items-center justify-between"><h3 className="font-bold">报价记录</h3><button onClick={loadQuotes} className="rounded-lg border border-slate-300 px-3 py-2 text-xs">刷新</button></div><div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["报价编号","状态","USD 总额","CNY 总额","创建日期","操作"].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead><tbody>{quotes.map(q=><tr key={q.id} className="border-t border-slate-100"><td className="px-3 py-3 font-bold">{q.quote_no}</td><td className="px-3 py-3">{labels[q.status]||q.status}</td><td className="px-3 py-3">{cash(q.total_usd,"USD")}</td><td className="px-3 py-3">{cash(q.total_cny,"CNY")}</td><td className="px-3 py-3">{d(q.created_at)}</td><td className="px-3 py-3">{!["converted","rejected","expired"].includes(q.status)&&<button disabled={busy} onClick={()=>void convertQuote(q.id)} className="text-xs font-bold text-emerald-700">转为订单 →</button>}</td></tr>)}{!quotes.length&&<tr><td colSpan={6} className="px-3 py-8 text-center text-slate-400">暂无报价记录</td></tr>}</tbody></table></div></div>
-    </div>}{module==="orders"&&profile.role!=="factory"&&<div className={panel}><h2 className="text-xl font-black">订单管理</h2><p className="mt-2 text-sm text-slate-500">支持接入报价转订单、生产/发货状态、预计交付日期和交付进度。完整订单编辑与履约界面在下一阶段实现。</p><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["订单编号","状态","USD 总额","CNY 总额","订单日期","预计交付"].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead><tbody>{orders.map(o=><tr key={o.id} className="border-t border-slate-100"><td className="px-3 py-3 font-bold">{o.order_no}</td><td className="px-3 py-3">{labels[o.status]||o.status}</td><td className="px-3 py-3">{cash(o.total_usd,"USD")}</td><td className="px-3 py-3">{cash(o.total_cny,"CNY")}</td><td className="px-3 py-3">{d(o.order_date)}</td><td className="px-3 py-3">{d(o.expected_delivery_date)}</td></tr>)}{!orders.length&&<tr><td colSpan={6} className="px-3 py-8 text-center text-slate-400">暂无订单</td></tr>}</tbody></table></div></div>}
+    </div>}{module==="orders"&&profile.role!=="factory"&&<div className="space-y-4">
+     <div className={panel}>
+      <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-black">订单管理</h2><p className="mt-2 text-sm text-slate-500">从报价转入的订单在此维护状态、预计交付日期、实际交付日期及进度历史。</p></div><button onClick={loadOrders} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">刷新订单</button></div>
+      <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[880px] text-left text-sm">
+       <thead className="bg-slate-50 text-xs text-slate-500"><tr>{["订单编号","客户","状态","USD 总额","CNY 总额","订单日期","预计交付","操作"].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead>
+       <tbody>{orders.map(o=><tr key={o.id} className="border-t border-slate-100">
+        <td className="px-3 py-3 font-bold">{o.order_no}</td><td className="px-3 py-3">{o.buyer_snapshot?.company_name||"—"}<div className="text-xs text-slate-400">{o.buyer_snapshot?.country||""}</div></td>
+        <td className="px-3 py-3">{labels[o.status]||o.status}</td><td className="px-3 py-3">{cash(o.total_usd,"USD")}</td><td className="px-3 py-3">{cash(o.total_cny,"CNY")}</td>
+        <td className="px-3 py-3">{d(o.order_date)}</td><td className="px-3 py-3">{d(o.expected_delivery_date)}</td>
+        <td className="px-3 py-3"><button onClick={()=>void openOrder(o)} className="text-xs font-bold text-emerald-700">查看 / 更新进度 →</button></td>
+       </tr>)}
+       {!orders.length&&<tr><td colSpan={8} className="px-3 py-8 text-center text-slate-400">暂无订单。可先在报价单中将有效报价转为订单。</td></tr>}
+       </tbody>
+      </table></div>
+     </div>
+     {selectedOrder&&<div className={panel}>
+      <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-black">{selectedOrder.order_no}</h3><p className="mt-1 text-sm text-slate-500">{selectedOrder.buyer_snapshot?.company_name||"客户信息"} · {labels[selectedOrder.status]||selectedOrder.status}</p></div><button onClick={()=>setSelectedOrder(null)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">关闭详情</button></div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+       <div className="rounded-lg bg-slate-50 p-3"><div className="text-xs text-slate-500">USD 金额</div><div className="mt-1 font-black">{cash(selectedOrder.total_usd,"USD")}</div></div>
+       <div className="rounded-lg bg-slate-50 p-3"><div className="text-xs text-slate-500">CNY 金额</div><div className="mt-1 font-black">{cash(selectedOrder.total_cny,"CNY")}</div></div>
+       <div className="rounded-lg bg-slate-50 p-3"><div className="text-xs text-slate-500">订单日期</div><div className="mt-1 font-bold">{d(selectedOrder.order_date)}</div></div>
+       <div className="rounded-lg bg-slate-50 p-3"><div className="text-xs text-slate-500">实际交付日期</div><div className="mt-1 font-bold">{d(selectedOrder.actual_delivery_date)}</div></div>
+      </div>
+      <div className="mt-5 grid gap-5 lg:grid-cols-2">
+       <form onSubmit={saveOrderProgress} className="rounded-lg bg-slate-50 p-4">
+        <h4 className="font-bold">更新订单状态与交付进度</h4>
+        <label className="mt-3 block text-sm">订单状态<select value={orderDraft.status} onChange={e=>setOrderDraft(v=>({...v,status:e.target.value}))} className={input+" mt-1"}>{["quoted","ordered","production","shipped","completed","cancelled"].map(x=><option key={x} value={x}>{labels[x]||x}</option>)}</select></label>
+        <label className="mt-3 block text-sm">本次进度说明<textarea required value={orderDraft.progress_description} onChange={e=>setOrderDraft(v=>({...v,progress_description:e.target.value}))} placeholder="例如：Production started; 30% completed." className={input+" mt-1 min-h-24"}/></label>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2"><label className="text-sm">预计交付日期<input type="date" value={orderDraft.expected_delivery_date} onChange={e=>setOrderDraft(v=>({...v,expected_delivery_date:e.target.value}))} className={input+" mt-1"}/></label><label className="text-sm">实际交付日期<input type="date" value={orderDraft.actual_delivery_date} onChange={e=>setOrderDraft(v=>({...v,actual_delivery_date:e.target.value}))} className={input+" mt-1"}/></label></div>
+        <button disabled={busy} className={btn+" mt-4"}>{busy?"正在保存…":"保存订单进度"}</button>
+       </form>
+       <div><h4 className="font-bold">交付进度时间线</h4><div className="mt-3 space-y-3">{orderUpdates.map(u=><div key={u.id} className="border-l-2 border-emerald-500 pl-3"><div className="flex flex-wrap justify-between gap-2 text-xs text-slate-400"><span>{u.status?labels[u.status]||u.status:"进度更新"}</span><span>{new Date(u.created_at).toLocaleString("zh-CN")}</span></div><p className="mt-1 whitespace-pre-wrap text-sm">{u.progress_description}</p>{u.expected_delivery_date&&<p className="mt-1 text-xs text-slate-500">预计交付：{d(u.expected_delivery_date)}</p>}{u.actual_delivery_date&&<p className="mt-1 text-xs text-emerald-700">实际交付：{d(u.actual_delivery_date)}</p>}</div>)}{!orderUpdates.length&&<p className="text-sm text-slate-400">暂无进度记录。</p>}</div></div>
+      </div>
+     </div>}
+    </div>}
 
     {module==="documents"&&profile.role!=="factory"&&<div className={panel}><h2 className="text-xl font-black">外贸单据（CI / PI / PL）</h2><p className="mt-2 text-sm text-slate-500">CI、PI、PL 单据独立快照、编号唯一、字段分区和签章配置已建立数据库基础；单据编辑及 PDF 预览导出界面仍需开发。</p><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[600px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["类型","单据编号","订单 ID","状态","日期"].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead><tbody>{docs.map(x=><tr key={x.id} className="border-t border-slate-100"><td className="px-3 py-3 font-bold">{x.document_type}</td><td className="px-3 py-3">{x.document_no}</td><td className="px-3 py-3 text-xs">{x.order_id}</td><td className="px-3 py-3">{labels[x.status]||x.status}</td><td className="px-3 py-3">{d(x.document_date)}</td></tr>)}{!docs.length&&<tr><td colSpan={5} className="px-3 py-8 text-center text-slate-400">暂无外贸单据</td></tr>}</tbody></table></div></div>}
 
