@@ -129,9 +129,6 @@ Deno.serve(async (req: Request) => {
       if (!user_id || !full_name || !["admin", "sales", "factory"].includes(role)) {
         return json({ error: "User ID, full name and role are required." }, 400);
       }
-      if (!validUsername(username)) {
-        return json({ error: "用户名必须为 3–32 位小写英文字母、数字、点、下划线或连字符，且以字母或数字开头。" }, 400);
-      }
       if (!validEmail(email)) {
         return json({ error: "请输入有效的登录邮箱地址。" }, 400);
       }
@@ -150,6 +147,10 @@ Deno.serve(async (req: Request) => {
       }>;
       const target = targetRows[0];
       if (!target) return json({ error: "Account not found." }, 404);
+      // Preserve existing imported administrator identifiers; enforce the new username format only when it changes.
+      if (username !== target.username && !validUsername(username)) {
+        return json({ error: "新用户名必须为 3–32 位小写英文字母、数字、点、下划线或连字符，且以字母或数字开头。" }, 400);
+      }
 
       const duplicateRes = await rest(
         `crm_user_profiles?select=user_id&or=(username.eq.${encodeURIComponent(username)},email.eq.${encodeURIComponent(email)})&user_id=neq.${encodeURIComponent(user_id)}&limit=1`
