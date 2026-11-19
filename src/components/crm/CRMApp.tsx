@@ -504,7 +504,57 @@ function addQuoteLine(){
      </div>}
     </div>}
 
-    {module==="documents"&&profile.role!=="factory"&&<div className={panel}><h2 className="text-xl font-black">外贸单据（CI / PI / PL）</h2><p className="mt-2 text-sm text-slate-500">CI、PI、PL 单据独立快照、编号唯一、字段分区和签章配置已建立数据库基础；单据编辑及 PDF 预览导出界面仍需开发。</p><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[600px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["类型","单据编号","订单 ID","状态","日期"].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead><tbody>{docs.map(x=><tr key={x.id} className="border-t border-slate-100"><td className="px-3 py-3 font-bold">{x.document_type}</td><td className="px-3 py-3">{x.document_no}</td><td className="px-3 py-3 text-xs">{x.order_id}</td><td className="px-3 py-3">{labels[x.status]||x.status}</td><td className="px-3 py-3">{d(x.document_date)}</td></tr>)}{!docs.length&&<tr><td colSpan={5} className="px-3 py-8 text-center text-slate-400">暂无外贸单据</td></tr>}</tbody></table></div></div>}
+    {module==="documents"&&profile.role!=="factory"&&<div className="space-y-4">
+      <div className={panel}>
+       <div><h2 className="text-xl font-black">外贸单据管理（CI / PI / PL）</h2><p className="mt-2 text-sm text-slate-500">从订单快照生成英文商业发票、形式发票与装箱单；单据与订单独立，允许编辑、重置和打印保存为 PDF。</p></div>
+       <div className="mt-4 flex flex-wrap items-end gap-2">
+        <label className="min-w-[280px] flex-1 text-sm">选择订单<select value={docOrderId} onChange={e=>setDocOrderId(e.target.value)} className={input+" mt-1"}><option value="">请选择要生成单据的订单</option>{orders.map(o=><option key={o.id} value={o.id}>{o.order_no} · {o.buyer_snapshot?.company_name||"Customer"} · {cash(o.total_usd,"USD")}</option>)}</select></label>
+        <button disabled={busy||!docOrderId} onClick={()=>void createTradeDocument("CI")} className={btn}>生成 CI</button>
+        <button disabled={busy||!docOrderId} onClick={()=>void createTradeDocument("PI")} className={btn}>生成 PI</button>
+        <button disabled={busy||!docOrderId} onClick={()=>void createTradeDocument("PL")} className={btn}>生成 PL</button>
+       </div>
+      </div>
+      <div className={panel}>
+       <div className="mb-4 flex items-center justify-between gap-3"><h3 className="font-bold">单据列表</h3><button onClick={loadDocs} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">刷新</button></div>
+       <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["类型","单据编号","订单编号","状态","日期","操作"].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead><tbody>
+        {docs.map(x=><tr key={x.id} className="border-t border-slate-100"><td className="px-3 py-3 font-bold">{x.document_type}</td><td className="px-3 py-3">{x.document_no}</td><td className="px-3 py-3">{String(x.order_snapshot?.order_no||x.order_id)}</td><td className="px-3 py-3">{labels[x.status]||x.status}</td><td className="px-3 py-3">{d(x.document_date)}</td><td className="px-3 py-3"><button onClick={()=>void openTradeDocument(x)} className="font-bold text-emerald-700">编辑 / 预览 →</button></td></tr>)}
+        {!docs.length&&<tr><td colSpan={6} className="px-3 py-8 text-center text-slate-400">暂无外贸单据。请先从上方选择订单生成。</td></tr>}
+       </tbody></table></div>
+      </div>
+      {selectedDoc&&<form onSubmit={saveTradeDocument} className={panel+" space-y-5"}>
+       <div className="flex flex-wrap items-start justify-between gap-3"><div><h3 className="text-lg font-black">{selectedDoc.document_type==="CI"?"商业发票 Commercial Invoice":selectedDoc.document_type==="PI"?"形式发票 Proforma Invoice":"装箱单 Packing List"}</h3><p className="mt-1 text-sm text-slate-500">来源订单：{String(selectedDoc.order_snapshot?.order_no||selectedDoc.order_id)} · {labels[selectedDoc.status]||selectedDoc.status}</p></div><button type="button" onClick={()=>setSelectedDoc(null)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">关闭编辑</button></div>
+       <div><h4 className="font-bold">一、单据基本信息</h4><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="text-sm">单据编号<input required value={docDraft.document_no} onChange={e=>setDocDraft(v=>({...v,document_no:e.target.value}))} className={input+" mt-1"}/></label>
+        <label className="text-sm">单据日期<input required type="date" value={docDraft.document_date} onChange={e=>setDocDraft(v=>({...v,document_date:e.target.value}))} className={input+" mt-1"}/></label>
+        <label className="text-sm">合同/订单号<input value={docDraft.contract_no} onChange={e=>setDocDraft(v=>({...v,contract_no:e.target.value}))} className={input+" mt-1"}/></label>
+        <label className="text-sm">运输唛头<input value={docDraft.shipping_marks} onChange={e=>setDocDraft(v=>({...v,shipping_marks:e.target.value}))} className={input+" mt-1"}/></label>
+       </div></div>
+       <div><h4 className="font-bold">二、贸易条款与银行相关条款</h4><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <label className="text-sm">贸易术语<input value={docDraft.incoterm} onChange={e=>setDocDraft(v=>({...v,incoterm:e.target.value}))} className={input+" mt-1"}/></label>
+        <label className="text-sm">付款方式<input value={docDraft.payment_terms} onChange={e=>setDocDraft(v=>({...v,payment_terms:e.target.value}))} className={input+" mt-1"}/></label>
+        <label className="text-sm">原产国<input value={docDraft.origin} onChange={e=>setDocDraft(v=>({...v,origin:e.target.value}))} className={input+" mt-1"}/></label>
+        <label className="text-sm sm:col-span-2 lg:col-span-3">备注<textarea value={docDraft.remarks} onChange={e=>setDocDraft(v=>({...v,remarks:e.target.value}))} className={input+" mt-1 min-h-16"}/></label>
+       </div></div>
+       <div><h4 className="font-bold">三、运输与包装信息</h4><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {([["loading_port","装运港"],["destination_port","目的港"],["container_no","集装箱号"],["seal_no","封条号"],["shipping_date","装船日期"],["package_count","总箱数/包装件数"],["gross_weight","毛重（KGS）"],["net_weight","净重（KGS）"],["volume","体积（CBM）"]] as [string,string][]).map(([k,l])=><label key={k} className="text-sm">{l}<input value={(docDraft as Record<string,string>)[k]} onChange={e=>setDocDraft(v=>({...v,[k]:e.target.value}))} className={input+" mt-1"}/></label>)}
+       </div></div>
+       <div><h4 className="font-bold">四、产品明细（可编辑）</h4><div className="mt-3 overflow-x-auto"><table className="w-full min-w-[1350px] text-left text-xs"><thead className="bg-slate-50 text-slate-500"><tr>{["ITEM / Model","Product Name","Description","Qty","Unit Price","Amount","Packing / 40HQ","G.W.","N.W.","CBM"].map(x=><th key={x} className="px-2 py-2">{x}</th>)}</tr></thead><tbody>
+        {docItems.map(item=><tr key={item.id} className="border-t border-slate-100">
+         <td className="p-1"><input value={String(item.item_fields.model_code||"")} onChange={e=>updateDocItem(item.id,"model_code",e.target.value)} className="w-28 rounded border border-slate-200 px-2 py-2"/></td>
+         <td className="p-1"><input value={String(item.item_fields.product_name||"")} onChange={e=>updateDocItem(item.id,"product_name",e.target.value)} className="w-40 rounded border border-slate-200 px-2 py-2"/></td>
+         <td className="p-1"><input value={String(item.item_fields.description||"")} onChange={e=>updateDocItem(item.id,"description",e.target.value)} className="w-44 rounded border border-slate-200 px-2 py-2"/></td>
+         <td className="p-1"><input type="number" min="0" step="0.01" value={String(item.item_fields.quantity??"")} onChange={e=>updateDocItem(item.id,"quantity",e.target.value)} className="w-20 rounded border border-slate-200 px-2 py-2"/></td>
+         <td className="p-1"><input type="number" min="0" step="0.01" value={String(item.item_fields.unit_price??"")} onChange={e=>updateDocItem(item.id,"unit_price",e.target.value)} className="w-24 rounded border border-slate-200 px-2 py-2"/></td>
+         <td className="p-1"><input value={String(item.item_fields.line_total??"")} readOnly className="w-24 rounded border border-slate-100 bg-slate-50 px-2 py-2"/></td>
+         <td className="p-1"><input type="number" min="0" step="1" value={String(item.item_fields.packing_quantity_40hq??"")} onChange={e=>updateDocItem(item.id,"packing_quantity_40hq",e.target.value)} className="w-24 rounded border border-slate-200 px-2 py-2"/></td>
+         {(["gross_weight","net_weight","volume"] as string[]).map(k=><td key={k} className="p-1"><input value={String(item.item_fields[k]??"")} onChange={e=>updateDocItem(item.id,k,e.target.value)} className="w-20 rounded border border-slate-200 px-2 py-2"/></td>)}
+        </tr>)}
+        {!docItems.length&&<tr><td colSpan={10} className="px-3 py-6 text-center text-slate-400">该订单暂无产品明细。</td></tr>}
+       </tbody></table></div></div>
+       <div><h4 className="font-bold">五、声明与签署</h4><textarea value={docDraft.declaration} onChange={e=>setDocDraft(v=>({...v,declaration:e.target.value}))} className={input+" mt-3 min-h-20 w-full"}/><div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">{selectedDoc.branding_snapshot?.logo_url&&<span>已套用 Logo</span>}{selectedDoc.branding_snapshot?.stamp_url&&<span>已套用签章</span>}{!selectedDoc.branding_snapshot?.logo_url&&!selectedDoc.branding_snapshot?.stamp_url&&<span>暂无品牌图片，将使用文字抬头和签署区域</span>}</div></div>
+       <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4"><button disabled={busy} className={btn}>保存单据</button><button type="button" disabled={busy} onClick={()=>void resetTradeDocument()} className="rounded-lg border border-amber-300 px-4 py-2.5 text-sm text-amber-800">按订单数据重置</button><button type="button" onClick={previewTradeDocument} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm">预览 / 打印 / 保存 PDF</button></div>
+      </form>}
+     </div>}
 
     {module==="accounts"&&profile.role==="admin"&&<div className="space-y-4">
      <div className={panel}>
