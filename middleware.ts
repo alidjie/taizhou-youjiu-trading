@@ -15,6 +15,23 @@ function detectLocale(request: NextRequest): Locale {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const hostname = (request.headers.get("host") || "").split(":")[0].toLowerCase();
+
+  // The CRM runs on its own subdomain. Internally map its root to /crm
+  // without exposing /crm in the browser URL or applying the public-site locale redirect.
+  if (hostname === "crm.almcp.com") {
+    if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname === "/favicon.ico" || /\\.[^/]+$/.test(pathname)) {
+      return NextResponse.next();
+    }
+
+    const destination = request.nextUrl.clone();
+    if (pathname === "/") {
+      destination.pathname = "/crm";
+    } else if (!pathname.startsWith("/crm")) {
+      destination.pathname = `/crm${pathname}`;
+    }
+    return NextResponse.rewrite(destination);
+  }
   if (pathname.startsWith("/admin") || pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname === "/favicon.ico" || /\.[^/]+$/.test(pathname)) {
     return NextResponse.next();
   }
