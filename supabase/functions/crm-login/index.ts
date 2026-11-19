@@ -66,8 +66,11 @@ Deno.serve(async (req: Request) => {
     const profiles = await profileRes.json() as Array<{ email: string; is_active: boolean }>;
     const profile = profiles[0];
     // Use the same response for unknown, disabled and wrong-password accounts.
-    if (!profile?.email || !profile.is_active) {
-      return json({ error: "账号或密码错误，或账号已被停用。" }, 401, origin);
+    if (!profile?.email) {
+      return json({ error: "账号或密码错误。" }, 401, origin);
+    }
+    if (!profile.is_active) {
+      return json({ error: "该账号已被禁用，请联系管理员。" }, 401, origin);
     }
 
     const authRes = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
