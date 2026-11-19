@@ -336,7 +336,86 @@ export default function CRMApp(){
   }catch(e){setError(e instanceof Error?e.message:"报价保存失败。");}
   finally{setBusy(false);}
 }
-async function convertQuote(id:string){
+async function openQuote(quote:Quote){
+   setSelectedQuote(quote);setError("");setNotice("");
+   setQuoteEditDraft({valid_until:quote.valid_until||"",incoterm:quote.incoterm||"FOB",loading_port:quote.loading_port||"",destination_port:quote.destination_port||"",payment_terms:quote.payment_terms||"",delivery_terms:quote.delivery_terms||"",packaging_terms:quote.packaging_terms||"",warranty_terms:quote.warranty_terms||"",remarks:quote.remarks||""});
+   try{
+    const [items,logs]=await Promise.all([
+     req<QuoteItem[]>("crm_quote_items?select=*&quote_id=eq."+encodeURIComponent(quote.id)+"&order=line_no.asc&limit=500"),
+     req<QuoteEmailLog[]>("crm_quote_email_logs?select=id,recipient,subject,method,sent_at,body,metadata&quote_id=eq."+encodeURIComponent(quote.id)+"&order=sent_at.desc&limit=100")
+    ]);
+    setQuoteDetailItems(items);setQuoteEmailLogs(logs);
+   }catch(e){setError(e instanceof Error?e.message:"报价明细或邮件记录加载失败。");}
+  }
+  function updateQuoteDetailLine(id:string,key:"quantity"|"unit_price",value:string){
+   setQuoteDetailItems(rows=>rows.map(row=>row.id===id?{...row,[key]:value===""?0:Number(value),line_total:(key==="quantity"?Number(value):Number(row.quantity))*(key==="unit_price"?Number(value):Number(row.unit_price))}:row));
+  }
+  async function saveQuoteDetail(e:React.FormEvent){
+   e.preventDefault();if(!selectedQuote)return;
+   if(quoteDetailItems.some(x=>Number(x.quantity)<=0||Number(x.unit_price)<0)){setError("报价明细数量必须大于零，单价不能小于零。");return;}
+   setBusy(true);setError("");setNotice("");
+   try{
+    await req("crm_quotes?id=eq."+encodeURIComponent(selectedQuote.id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({
+      valid_until:quoteEditDraft.valid_until||null,incoterm:quoteEditDraft.incoterm||null,
+      loading_port:quoteEditDraft.loading_port||null,destination_port:quoteEditDraft.destination_port||null,
+      payment_terms:quoteEditDraft.payment_terms||null,delivery_terms:quoteEditDraft.delivery_terms||null,
+      packaging_terms:quoteEditDraft.packaging_terms||null,warranty_terms:quoteEditDraft.warranty_terms||null,
+      remarks:quoteEditDraft.remarks||null
+    })});
+    await Promise.all(quoteDetailItems.map(item=>req("crm_quote_items?id=eq."+encodeURIComponent(item.id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({quantity:item.quantity,unit_price:item.unit_price,line_total:Number(item.quantity)*Number(item.unit_price)})})));
+    const refreshed=await req<Quote[]>("crm_quotes?select=*&id=eq."+encodeURIComponent(selectedQuote.id)+"&limit=1");
+    if(refreshed[0])await openQuote(refreshed[0]);
+    await loadQuotes();setNotice("报价条款与明细已保存，双币种小计已自动重算。");
+   }catch(e){setError(e instanceof Error?e.message:"报价修改失败。");}
+   finally{setBusy(false);}
+  }
+  function previewQuotePdf(){
+   if(!selectedQuote)return;
+   const esc=(v:unknown)=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]||ch));
+   const brand=selectedQuote.branding_snapshot||{};
+   const seller=selectedQuote.seller_snapshot||{};
+   const buyer=selectedQuote.buyer_snapshot||{};
+   const logo=String(brand.logo_url||"");const stamp=String(brand.stamp_url||"");
+   const rows=quoteDetailItems.map(item=>"<tr><td>"+esc(item.line_no)+"</td><td>"+esc(item.model_code)+"</td><td>"+esc(item.product_name)+"<br><small>"+esc(item.description||"")+"</small></td><td>"+esc(item.price_basis)+"</td><td class='num'>"+esc(item.quantity)+"</td><td class='num'>"+esc(item.unit_price)+"</td><td class='num'>"+esc(item.line_total)+"</td><td class='num'>"+esc(item.packing_quantity||"")+"</td></tr>").join("");
+   const fields=[["Incoterms",selectedQuote.incoterm],["Validity",selectedQuote.valid_until],["Loading Port",selectedQuote.loading_port],["Destination Port",selectedQuote.destination_port],["Payment Terms",selectedQuote.payment_terms],["Delivery Terms",selectedQuote.delivery_terms],["Packaging",selectedQuote.packaging_terms],["Warranty",selectedQuote.warranty_terms]];
+   const html="<!doctype html><html><head><meta charset='utf-8'><title>Quotation "+esc(selectedQuote.quote_no)+"</title><style>@page{size:A4;margin:13mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#18232d;font-size:10px}h1{font-size:24px;letter-spacing:.08em;margin:0}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #263746;padding-bottom:12px}.top img{max-width:180px;max-height:60px;object-fit:contain}.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}.panel{border:1px solid #cbd5df;padding:10px;min-height:88px}.panel b{display:block;font-size:9px;color:#586779;text-transform:uppercase;margin-bottom:5px}.terms{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}.field{border:1px solid #d7dfe7;padding:6px;min-height:28px}.field b{display:block;font-size:8px;color:#647282;text-transform:uppercase}table{width:100%;border-collapse:collapse;margin-top:12px}th{background:#e9eef2;text-align:left;font-size:8px;text-transform:uppercase}td,th{border:1px solid #cbd5df;padding:6px;vertical-align:top}.num{text-align:right}.totals{text-align:right;font-size:12px;font-weight:bold;margin-top:10px;line-height:1.7}.bank{margin-top:14px;border:1px solid #cbd5df;padding:10px;line-height:1.6}.sign{display:flex;justify-content:flex-end;min-height:80px;margin-top:20px}.sign img{max-width:140px;max-height:78px;object-fit:contain}.footer{margin-top:18px;border-top:1px solid #ccd5dd;padding-top:7px;font-size:8px;color:#657382}</style></head><body>";
+   html+="<div class='top'><div>"+(logo?"<img src='"+esc(logo)+"' alt='Logo'>":"<strong>"+esc(seller.company_name||"YOUJIU")+"</strong>")+"</div><div style='text-align:right'><h1>QUOTATION</h1><div><b>Quotation No.:</b> "+esc(selectedQuote.quote_no)+"</div><div><b>Date:</b> "+esc(new Date(selectedQuote.created_at).toLocaleDateString("en-GB"))+"</div></div></div>";
+   html+="<div class='meta'><div class='panel'><b>Seller / Exporter</b><strong>"+esc(seller.company_name||"YOUJIU")+"</strong><div>"+esc(seller.address)+"</div><div>"+esc(seller.telephone)+" · "+esc(seller.email)+"</div><div>"+esc(seller.website)+"</div></div><div class='panel'><b>Buyer / Importer</b><strong>"+esc(buyer.company_name)+"</strong><div>"+esc(buyer.contact_name)+"</div><div>"+esc(buyer.address)+"</div><div>"+esc(buyer.country)+" · "+esc(buyer.city)+"</div><div>"+esc(buyer.email)+"</div></div></div>";
+   html+="<div class='terms'>"+fields.map(([k,v])=>"<div class='field'><b>"+esc(k)+"</b>"+esc(v)+"</div>").join("")+"</div>";
+   html+="<table><thead><tr><th>NO.</th><th>ITEM / MODEL</th><th>PRODUCT DESCRIPTION</th><th>PRICE BASIS</th><th class='num'>QTY</th><th class='num'>UNIT PRICE</th><th class='num'>AMOUNT</th><th class='num'>40HQ QTY</th></tr></thead><tbody>"+rows+"</tbody></table>";
+   html+="<div class='totals'>TOTAL USD: "+esc(selectedQuote.total_usd)+"<br>TOTAL CNY: "+esc(selectedQuote.total_cny)+"</div>";
+   html+="<div class='bank'><b>BANKING DETAILS</b><br>Bank Name: "+esc(seller.bank_name)+"<br>Bank Address: "+esc(seller.bank_address)+"<br>Beneficiary: "+esc(seller.beneficiary)+"<br>Account No.: "+esc(seller.account_number)+"<br>SWIFT: "+esc(seller.swift_code)+"</div>";
+   html+="<div class='sign'>"+(stamp?"<img src='"+esc(stamp)+"' alt='Company Stamp'>":"<span>Authorized Signature / Company Stamp</span>")+"</div><div class='footer'>"+esc(seller.company_name||"YOUJIU")+" · "+esc(seller.website||"https://www.almcp.com")+" · This quotation is subject to the terms stated above.</div></body></html>";
+   const win=window.open("","_blank");
+   if(!win){setError("浏览器阻止了预览窗口，请允许弹出窗口后重试。");return;}
+   win.document.open();win.document.write(html);win.document.close();win.focus();win.print();
+  }
+  async function createQuoteEmailDraft(){
+   if(!selectedQuote)return;
+   const recipient=String(selectedQuote.buyer_snapshot?.email||"").trim();
+   if(!recipient){setError("该客户档案没有邮箱地址，请先编辑客户资料。");return;}
+   const subject="Quotation "+selectedQuote.quote_no+" - "+String(selectedQuote.buyer_snapshot?.company_name||"");
+   const body=[
+    "Dear "+String(selectedQuote.buyer_snapshot?.contact_name||"Customer")+",","",
+    "Please find our quotation "+selectedQuote.quote_no+" for your review.",
+    "Total USD: "+cash(selectedQuote.total_usd,"USD"),
+    "Total CNY: "+cash(selectedQuote.total_cny,"CNY"),
+    "Incoterms: "+String(selectedQuote.incoterm||""),
+    "Validity: "+String(selectedQuote.valid_until||""),
+    "Payment Terms: "+String(selectedQuote.payment_terms||""),
+    "","Please review the quotation PDF and let us know your comments.","",
+    "Best regards,",String(selectedQuote.seller_snapshot?.company_name||"YOUJIU")
+   ].join("\n");
+   setBusy(true);setError("");
+   try{
+    await req("crm_quote_email_logs",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({quote_id:selectedQuote.id,customer_id:selectedQuote.customer_id,logged_by:userId,recipient,subject,body,method:"mailto_draft",sent_at:new Date().toISOString(),metadata:{delivery_confirmed:false,note:"Email draft opened in the user's mail client; actual sending is not confirmed."}})});
+    const logs=await req<QuoteEmailLog[]>("crm_quote_email_logs?select=id,recipient,subject,method,sent_at,body,metadata&quote_id=eq."+encodeURIComponent(selectedQuote.id)+"&order=sent_at.desc&limit=100");
+    setQuoteEmailLogs(logs);setNotice("已调起邮件客户端并记录邮件草稿。请在邮件客户端附上报价 PDF 后自行发送；CRM 不会把草稿标记为已送达。");
+    window.location.href="mailto:"+encodeURIComponent(recipient)+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+   }catch(e){setError(e instanceof Error?e.message:"邮件草稿记录失败。");}
+   finally{setBusy(false);}
+  }
+  async function convertQuote(id:string){
   setBusy(true);setError("");setNotice("");
   try{
     const orderId=await req<string>("rpc/crm_convert_quote_to_order",{method:"POST",body:JSON.stringify({p_quote_id:id})});
