@@ -8,7 +8,7 @@ const SESSION_KEY = "youjiu-cms-session";
 
 type Role = "admin" | "sales" | "factory";
 type Profile = { user_id:string; username:string; email:string; full_name:string; role:Role; factory_id:string|null; is_active:boolean };
-type Customer = { id:string; company_name:string; contact_name:string; email:string|null; phone:string|null; whatsapp:string|null; country:string; city:string|null; owner_id:string; status:"prospect"|"following"|"won"|"lost"; tags:string[]; notes:string|null; next_followup_at:string|null; created_at:string; updated_at:string };
+type Customer = { id:string; company_name:string; contact_name:string; email:string|null; phone:string|null; whatsapp:string|null; country:string; city:string|null; owner_id:string; status:"prospect"|"following"|"won"|"lost"; tags:string[]; notes:string|null; last_contacted_at:string|null; next_followup_at:string|null; created_at:string; updated_at:string };
 type Followup = { id:string; customer_id:string; method:string; summary:string; followed_at:string; next_followup_at:string|null };
 type Product = { id:string; slug:string; name:string; model_code:string|null; category:string; factory_id:string|null; image:string|null; hero_image:string|null; skd_price_usd:number|null; skd_price_cny:number|null; ckd_price_usd:number|null; ckd_price_cny:number|null; packing_quantity_40hq:number|null; published:boolean; updated_at:string };
 type Quote = { id:string; quote_no:string; status:string; total_usd:number; total_cny:number; created_at:string };
@@ -25,7 +25,7 @@ const slug=(s:string)=>s.toLowerCase().trim().replace(/[^a-z0-9]+/g,"-").replace
 const hdr=(token:string)=>({apikey:KEY,Authorization:"Bearer "+token,"Content-Type":"application/json"});
 
 export default function CRMApp(){
- const [token,setToken]=useState(""),[refresh,setRefresh]=useState(""),[userId,setUserId]=useState("");
+ const [token,setToken]=useState(""),[userId,setUserId]=useState("");
  const [profile,setProfile]=useState<Profile|null>(null),[email,setEmail]=useState(""),[password,setPassword]=useState("");
  const [loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(""),[notice,setNotice]=useState("");
  const [module,setModule]=useState<Module>("dashboard"),[drawer,setDrawer]=useState(false);
@@ -55,7 +55,7 @@ export default function CRMApp(){
   if(!p.ok)throw new Error("读取 CRM 权限失败，请联系管理员。");
   const rows=await p.json() as Profile[],me=rows[0];
   if(!me||!me.is_active){await fetch(API+"/auth/v1/logout",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+access}});throw new Error("账号尚未获得 CRM 授权或已被禁用。");}
-  setToken(access);setRefresh(ref);setUserId(user.id);setProfile(me);
+  setToken(access);setUserId(user.id);setProfile(me);
   localStorage.setItem(SESSION_KEY,JSON.stringify({refresh_token:ref}));
   setModule(me.role==="factory"?"products":"dashboard");setPassword("");
  },[]);
@@ -69,7 +69,7 @@ export default function CRMApp(){
  },[establish]);
 
  async function login(e:React.FormEvent){e.preventDefault();setLoading(true);setError("");setNotice("");try{const r=await fetch(API+"/auth/v1/token?grant_type=password",{method:"POST",headers:{apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify({email:email.trim(),password})});const j=await r.json() as {access_token?:string;refresh_token?:string;msg?:string;message?:string};if(!r.ok||!j.access_token||!j.refresh_token)throw new Error(j.msg||j.message||"邮箱或密码错误。");await establish(j.access_token,j.refresh_token);}catch(e){setError(e instanceof Error?e.message:"登录失败。");}finally{setLoading(false);}}
- async function logout(){try{if(token)await fetch(API+"/auth/v1/logout",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+token}});}finally{localStorage.removeItem(SESSION_KEY);setToken("");setRefresh("");setUserId("");setProfile(null);setCustomers([]);setProducts([]);setSelected(null);setNotice("已安全退出。");}}
+ async function logout(){try{if(token)await fetch(API+"/auth/v1/logout",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+token}});}finally{localStorage.removeItem(SESSION_KEY);setToken("");setUserId("");setProfile(null);setCustomers([]);setProducts([]);setSelected(null);setNotice("已安全退出。");}}
 
  const loadDashboard=useCallback(async()=>{try{
   const [p,c,o]=await Promise.all([req<Perf[]>("crm_sales_performance?select=*&order=order_total_usd.desc"),req<Array<{id:string;status:string}>>("crm_customers?select=id,status&limit=5000"),req<Array<{id:string;total_usd:number;total_cny:number}>>("crm_orders?select=id,total_usd,total_cny&status=neq.cancelled&limit=5000")]);
