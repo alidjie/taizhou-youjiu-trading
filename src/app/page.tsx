@@ -31,10 +31,11 @@ export default async function Home() {
   // Defensive host-based rendering: even if middleware host rewriting is bypassed,
   // the CRM apex route must never fall through to the public marketing homepage.
   const requestHeaders = await headers();
-  const forwardedHost = requestHeaders.get("x-forwarded-host") || "";
-  const requestHost = forwardedHost || requestHeaders.get("host") || "";
-  const hostname = requestHost.split(",")[0].trim().split(":")[0].toLowerCase();
-  if (hostname === "crm.almcp.com") return <CRMApp />;
+  const hostCandidates = [requestHeaders.get("host"), requestHeaders.get("x-forwarded-host")]
+    .filter((value): value is string => Boolean(value))
+    .flatMap(value => value.split(","))
+    .map(value => value.trim().split(":")[0].toLowerCase());
+  if (hostCandidates.includes("crm.almcp.com")) return <CRMApp />;
 
   const locale = await getLocale();
   const [heroBlock, whyBlock, ctaBlock, featuredProducts] = await Promise.all([
