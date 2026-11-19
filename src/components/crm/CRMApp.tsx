@@ -458,15 +458,36 @@ async function openQuote(quote:Quote){
      req<QuoteItem[]>("crm_quote_items?select=*&quote_id=eq."+encodeURIComponent(quote.id)+"&order=line_no.asc&limit=500"),
      req<QuoteEmailLog[]>("crm_quote_email_logs?select=id,recipient,subject,method,sent_at,body,metadata&quote_id=eq."+encodeURIComponent(quote.id)+"&order=sent_at.desc&limit=100")
     ]);
-    setQuoteDetailItems(items);setQuoteEmailLogs(logs);
+    setQuoteDetailItems(items);setQuoteOriginalItemIds(items.map(x=>x.id));setQuoteEmailLogs(logs);
    }catch(e){setError(e instanceof Error?e.message:"报价明细或邮件记录加载失败。");}
   }
   function updateQuoteDetailLine(id:string,key:"quantity"|"unit_price",value:string){
    setQuoteDetailItems(rows=>rows.map(row=>row.id===id?{...row,[key]:value===""?0:Number(value),line_total:(key==="quantity"?Number(value):Number(row.quantity))*(key==="unit_price"?Number(value):Number(row.unit_price))}:row));
   }
+  function addQuoteDetailLine(){
+   if(!selectedQuote)return;
+   const product=products.find(p=>p.id===quoteLineDraft.product_id);
+   const price=productPrices.find(p=>p.product_id===quoteLineDraft.product_id);
+   if(!product||!price){setError("请选择已配置工厂价格的产品。");return;}
+   const value=(price as unknown as Record<string,number|null>)[quoteLineDraft.price_basis];
+   if(value===null||value===undefined){setError("该产品尚未配置所选 SKD/CKD 价格。");return;}
+   const quantity=Number(quoteLineDraft.quantity);
+   if(!Number.isFinite(quantity)||quantity<=0){setError("数量必须大于零。");return;}
+   setQuoteDetailItems(rows=>[...rows,{
+    id:"new-"+crypto.randomUUID(),quote_id:selectedQuote.id,product_id:product.id,factory_id:product.factory_id,
+    line_no:rows.length+1,model_code:product.model_code,product_name:product.name,
+    description:product.short_description||null,price_basis:quoteLineDraft.price_basis,quantity,
+    packing_quantity:price.packing_quantity_40hq,unit_price:Number(value),line_total:Number(value)*quantity,
+    product_snapshot:{id:product.id,slug:product.slug,name:product.name,model_code:product.model_code,category:product.category,specifications:product.specifications||{}},
+    image_url:product.hero_image||product.image
+   }]);
+   setError("");
+  }
   async function saveQuoteDetail(e:React.FormEvent){
    e.preventDefault();if(!selectedQuote)return;
-   if(quoteDetailItems.some(x=>Number(x.quantity)<=0||Number(x.unit_price)<0)){setError("报价明细数量必须大于零，单价不能小于零。");return;}
+   if(selectedQuote.status==="converted"){setError("已转订单的报价单不能再修改。");return;}
+   if(!quoteDetailItems.length){setError("报价单至少保留一条产品明细。");return;}
+   if(quoteDetailItems.some(x=>!Number.isFinite(Number(x.quantity))||Number(x.quantity)<=0||!Number.isFinite(Number(x.unit_price))||Number(x.unit_price)<0)){setError("报价明细数量必须大于零，单价不能小于零。");return;}
    setBusy(true);setError("");setNotice("");
    try{
     await req("crm_quotes?id=eq."+encodeURIComponent(selectedQuote.id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({
@@ -474,13 +495,29 @@ async function openQuote(quote:Quote){
       loading_port:quoteEditDraft.loading_port||null,destination_port:quoteEditDraft.destination_port||null,
       payment_terms:quoteEditDraft.payment_terms||null,delivery_terms:quoteEditDraft.delivery_terms||null,
       packaging_terms:quoteEditDraft.packaging_terms||null,warranty_terms:quoteEditDraft.warranty_terms||null,
-      remarks:quoteEditDraft.remarks||null
+      remarks:quoteEditDraft.remarks||null,updated_at:new Date().toISOString()
     })});
-    await Promise.all(quoteDetailItems.map(item=>req("crm_quote_items?id=eq."+encodeURIComponent(item.id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({quantity:item.quantity,unit_price:item.unit_price,line_total:Number(item.quantity)*Number(item.unit_price)})})));
+    const keptIds=quoteDetailItems.filter(x=>!x.id.startsWith("new-")).map(x=>x.id);
+    for(const removedId of quoteOriginalItemIds.filter(x=>!keptIds.includes(x))){
+      await req("crm_quote_items?id=eq."+encodeURIComponent(removedId),{method:"DELETE",headers:{Prefer:"return=minimal"}});
+    }
+    for(let i=0;i<quoteDetailItems.length;i++){
+     const item=quoteDetailItems[i];
+     const payload={line_no:i+1,product_name:item.product_name,description:item.description,quantity:Number(item.quantity),unit_price:Number(item.unit_price),line_total:Number(item.quantity)*Number(item.unit_price)};
+     if(item.id.startsWith("new-")){
+      await req("crm_quote_items",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({
+       quote_id:selectedQuote.id,product_id:item.product_id,factory_id:item.factory_id,...payload,
+       model_code:item.model_code,price_basis:item.price_basis,packing_quantity:item.packing_quantity,
+       product_snapshot:item.product_snapshot,image_url:item.image_url
+      })});
+     }else{
+      await req("crm_quote_items?id=eq."+encodeURIComponent(item.id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify(payload)});
+     }
+    }
     const refreshed=await req<Quote[]>("crm_quotes?select=*&id=eq."+encodeURIComponent(selectedQuote.id)+"&limit=1");
     if(refreshed[0])await openQuote(refreshed[0]);
-    await loadQuotes();setNotice("报价条款与明细已保存，双币种小计已自动重算。");
-   }catch(e){setError(e instanceof Error?e.message:"报价修改失败。");}
+    await loadQuotes();setNotice("报价条款及产品明细已保存，USD/CNY 总额由数据库自动重算。");
+   }catch(e){setError(e instanceof Error?e.message:"报价修改失败。请检查产品、价格和数据权限。");}
    finally{setBusy(false);}
   }
   function previewQuotePdf(){
