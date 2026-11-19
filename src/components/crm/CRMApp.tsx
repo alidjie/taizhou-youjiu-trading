@@ -10,9 +10,10 @@ type Role = "admin" | "sales" | "factory";
 type Profile = { user_id:string; username:string; email:string; full_name:string; role:Role; factory_id:string|null; is_active:boolean; created_at?:string };
 type Customer = { id:string; company_name:string; contact_name:string; email:string|null; phone:string|null; whatsapp:string|null; website:string|null; address:string|null; country:string; city:string|null; owner_id:string; status:"prospect"|"following"|"won"|"lost"; tags:string[]; notes:string|null; last_contacted_at:string|null; next_followup_at:string|null; created_at:string; updated_at:string };
 type Followup = { id:string; customer_id:string; method:string; summary:string; followed_at:string; next_followup_at:string|null };
-type Product = { id:string; slug:string; name:string; model_code:string|null; category:string; factory_id:string|null; image:string|null; hero_image:string|null; published:boolean; updated_at:string };
+type Product = { id:string; slug:string; name:string; model_code:string|null; category:string; factory_id:string|null; image:string|null; hero_image:string|null; published:boolean; updated_at:string; short_description?:string|null; description?:string|null; gallery?:string[]; specifications?:Record<string,string>; features?:string[]; certifications?:string[]; custom_attributes?:Record<string,unknown>; featured?:boolean; sort_order?:number };
 type ProductPrice = { product_id:string; factory_id:string; skd_price_usd:number|null; skd_price_cny:number|null; ckd_price_usd:number|null; ckd_price_cny:number|null; packing_quantity_40hq:number|null };
 type Factory = { id:string; factory_code:string; name:string; status:string };
+type AttributeDefinition = { id:string; factory_id:string|null; field_key:string; label:string; data_type:"text"|"number"|"select"; options:string[]; is_required:boolean; sort_order:number };
 type Quote = { id:string; quote_no:string; customer_id:string; owner_id:string; status:string; total_usd:number; total_cny:number; valid_until:string|null; incoterm:string|null; loading_port:string|null; destination_port:string|null; payment_terms:string|null; delivery_terms:string|null; packaging_terms:string|null; warranty_terms:string|null; remarks:string|null; seller_snapshot:Record<string,unknown>; buyer_snapshot:Record<string,unknown>; branding_snapshot:Record<string,unknown>; created_at:string; updated_at:string };
 type QuoteItem = { id:string; quote_id:string; product_id:string|null; factory_id:string|null; line_no:number; model_code:string|null; product_name:string; description:string|null; price_basis:string; quantity:number; packing_quantity:number|null; unit_price:number; line_total:number; product_snapshot:Record<string,unknown>; image_url:string|null };
 type QuoteEmailLog = { id:string; recipient:string; subject:string; method:string; sent_at:string; body:string|null; metadata:Record<string,unknown> };
@@ -41,8 +42,10 @@ export default function CRMApp(){
  const [selected,setSelected]=useState<Customer|null>(null),[followups,setFollowups]=useState<Followup[]>([]);
  const [customerOpen,setCustomerOpen]=useState(false),[customerDraft,setCustomerDraft]=useState({company_name:"",contact_name:"",email:"",phone:"",whatsapp:"",website:"",address:"",country:"",city:"",notes:"",tags:""}),[customerEditOpen,setCustomerEditOpen]=useState(false),[customerEditDraft,setCustomerEditDraft]=useState({company_name:"",contact_name:"",email:"",phone:"",whatsapp:"",website:"",address:"",country:"",city:"",notes:"",tags:""}),[relatedQuotes,setRelatedQuotes]=useState<Quote[]>([]),[relatedOrders,setRelatedOrders]=useState<Order[]>([]);
  const [followupDraft,setFollowupDraft]=useState({method:"email",summary:"",next_followup_at:""});
- const [products,setProducts]=useState<Product[]>([]),[productPrices,setProductPrices]=useState<ProductPrice[]>([]),[factories,setFactories]=useState<Factory[]>([]),[productSearch,setProductSearch]=useState(""),[productOpen,setProductOpen]=useState(false);
- const [productDraft,setProductDraft]=useState({name:"",model_code:"",category:"electric-motorcycles",factory_id:"",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
+ const [products,setProducts]=useState<Product[]>([]),[productPrices,setProductPrices]=useState<ProductPrice[]>([]),[factories,setFactories]=useState<Factory[]>([]),[attributeDefinitions,setAttributeDefinitions]=useState<AttributeDefinition[]>([]),[productSearch,setProductSearch]=useState(""),[productOpen,setProductOpen]=useState(false),[productImage,setProductImage]=useState<File|null>(null);
+ const [productDraft,setProductDraft]=useState({id:"",name:"",model_code:"",category:"electric-motorcycles",factory_id:"",short_description:"",description:"",hero_image:"",gallery_text:"",specifications_text:"",features_text:"",certifications_text:"",featured:false,sort_order:"0",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
+ const [productCustomAttributes,setProductCustomAttributes]=useState<Record<string,unknown>>({});
+ const [attributeOpen,setAttributeOpen]=useState(false),[attributeDraft,setAttributeDraft]=useState({factory_id:"",field_key:"",label:"",data_type:"text" as "text"|"number"|"select",options:"",is_required:false,sort_order:"0"});
  const [factoryOpen,setFactoryOpen]=useState(false),[factoryDraft,setFactoryDraft]=useState({factory_code:"",name:"",contact_name:"",email:"",phone:"",address:""});
  const [accountOpen,setAccountOpen]=useState(false),[accountDraft,setAccountDraft]=useState({username:"",email:"",full_name:"",password:"",role:"sales",factory_id:""});
  const [accountSearch,setAccountSearch]=useState(""),[accountRoleFilter,setAccountRoleFilter]=useState("all"),[editingAccount,setEditingAccount]=useState<Profile|null>(null),[editAccountDraft,setEditAccountDraft]=useState({username:"",email:"",full_name:"",role:"sales",factory_id:""});
@@ -90,7 +93,7 @@ export default function CRMApp(){
   setPerf(p);setKpis({customers:c.length,won:c.filter(x=>x.status==="won").length,usd:o.reduce((s,x)=>s+Number(x.total_usd||0),0),cny:o.reduce((s,x)=>s+Number(x.total_cny||0),0),orders:o.length});
  }catch(e){setError(e instanceof Error?e.message:"看板加载失败。");}},[req]);
  const loadCustomers=useCallback(async()=>{setBusy(true);try{setCustomers(await req<Customer[]>("crm_customers?select=*&order=updated_at.desc&limit=1000"));}catch(e){setError(e instanceof Error?e.message:"客户加载失败。");}finally{setBusy(false);}},[req]);
- const loadProducts=useCallback(async()=>{setBusy(true);try{const [rows,priceRows,factoryRows]=await Promise.all([req<Product[]>("products?select=id,slug,name,model_code,category,factory_id,image,hero_image,published,updated_at&order=created_at.desc&limit=2000"),req<ProductPrice[]>("crm_product_prices?select=product_id,factory_id,skd_price_usd,skd_price_cny,ckd_price_usd,ckd_price_cny,packing_quantity_40hq&limit=2000"),req<Factory[]>("crm_factories?select=id,factory_code,name,status&order=name")]);setProducts(rows);setProductPrices(priceRows);setFactories(factoryRows);}catch(e){setError(e instanceof Error?e.message:"产品加载失败。");}finally{setBusy(false);}},[req]);
+ const loadProducts=useCallback(async()=>{setBusy(true);try{const [rows,priceRows,factoryRows,attributeRows]=await Promise.all([req<Product[]>("products?select=*&order=created_at.desc&limit=2000"),req<ProductPrice[]>("crm_product_prices?select=product_id,factory_id,skd_price_usd,skd_price_cny,ckd_price_usd,ckd_price_cny,packing_quantity_40hq&limit=2000"),req<Factory[]>("crm_factories?select=id,factory_code,name,status&order=name"),req<AttributeDefinition[]>("crm_product_attribute_definitions?select=*&order=factory_id.asc,sort_order.asc&limit=500")]);setProducts(rows);setProductPrices(priceRows);setFactories(factoryRows);setAttributeDefinitions(attributeRows);}catch(e){setError(e instanceof Error?e.message:"产品加载失败。");}finally{setBusy(false);}},[req]);
  const loadQuotes=useCallback(async()=>{try{setQuotes(await req<Quote[]>("crm_quotes?select=*&order=created_at.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"报价加载失败。");}},[req]);
  const loadOrders=useCallback(async()=>{try{setOrders(await req<Order[]>("crm_orders?select=id,order_no,customer_id,status,total_usd,total_cny,order_date,expected_delivery_date,actual_delivery_date,delivery_progress,buyer_snapshot&order=order_date.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"订单加载失败。");}},[req]);
  async function openOrder(order:Order){
@@ -263,7 +266,114 @@ export default function CRMApp(){
    }catch(e){setError(e instanceof Error?e.message:"客户关联记录加载失败。");}
   }
  async function addFollowup(e:React.FormEvent){e.preventDefault();if(!selected)return;setBusy(true);try{await req("crm_customer_followups",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({customer_id:selected.id,created_by:userId,method:followupDraft.method,summary:followupDraft.summary,followed_at:new Date().toISOString(),next_followup_at:followupDraft.next_followup_at?new Date(followupDraft.next_followup_at).toISOString():null})});await updateCustomer({last_contacted_at:new Date().toISOString(),next_followup_at:followupDraft.next_followup_at?new Date(followupDraft.next_followup_at).toISOString():null});setFollowupDraft({method:"email",summary:"",next_followup_at:""});await openCustomer(selected);setNotice("跟进记录已添加。");}catch(e){setError(e instanceof Error?e.message:"添加跟进记录失败。");}finally{setBusy(false);}}
- async function saveProduct(e:React.FormEvent){e.preventDefault();if(!profile)return;setBusy(true);setError("");try{const id=crypto.randomUUID();const factoryId=profile.role==="factory"?profile.factory_id:productDraft.factory_id;if(!factoryId)throw new Error("请先选择所属工厂，工厂账号自动使用本厂。");const product={id,slug:slug(productDraft.model_code||productDraft.name)||id,name:productDraft.name.trim(),model_code:productDraft.model_code.trim()||null,category:productDraft.category,factory_id:factoryId,published:false,hero_image:null,image:null,gallery:[],specs:[],features:[],specifications:{},certifications:[]};const prices={skd_price_usd:productDraft.skd_price_usd||null,skd_price_cny:productDraft.skd_price_cny||null,ckd_price_usd:productDraft.ckd_price_usd||null,ckd_price_cny:productDraft.ckd_price_cny||null,packing_quantity_40hq:productDraft.packing_quantity_40hq||null};if(!Object.values(prices).some(v=>v!==null))throw new Error("至少填写一项 SKD/CKD 价格或 40HQ 装箱量。");await req<string>("rpc/crm_create_product_with_prices",{method:"POST",body:JSON.stringify({p_product:product,p_prices:prices})});setProductOpen(false);setProductDraft({name:"",model_code:"",category:"electric-motorcycles",factory_id:"",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});setNotice("产品与工厂价格已保存为内部草稿；价格存放在受权限保护的独立数据表。");await loadProducts();}catch(e){setError(e instanceof Error?e.message:"产品保存失败。");}finally{setBusy(false);}}
+
+ async function uploadProductImage(file:File,productId:string){
+  if(!profile)throw new Error("登录状态已失效。");
+  if(!["image/jpeg","image/png","image/webp","image/avif"].includes(file.type))throw new Error("产品图片仅支持 JPG、PNG、WebP 或 AVIF。");
+  if(file.size>12*1024*1024)throw new Error("产品图片不能超过 12 MB。");
+  const ext=file.type==="image/jpeg"?"jpg":file.type==="image/png"?"png":file.type==="image/avif"?"avif":"webp";
+  const prefix=profile.role==="factory"?"crm/factory/"+profile.factory_id:"crm/admin";
+  const path=prefix+"/"+productId+"/"+Date.now()+"-"+crypto.randomUUID()+"."+ext;
+  const response=await fetch(API+"/storage/v1/object/products/"+path,{method:"POST",headers:{...hdr(token),"x-upsert":"false","Content-Type":file.type},body:file});
+  if(!response.ok)throw new Error("产品图片上传失败："+await response.text());
+  return API+"/storage/v1/object/public/products/"+path;
+ }
+ function beginEditProduct(product:Product){
+  const p=productPrices.find(x=>x.product_id===product.id);
+  setProductDraft({
+   id:product.id,name:product.name,model_code:product.model_code||"",category:product.category,factory_id:product.factory_id||"",
+   short_description:product.short_description||"",description:product.description||"",hero_image:product.hero_image||product.image||"",
+   gallery_text:(product.gallery||[]).join("\n"),
+   specifications_text:Object.entries(product.specifications||{}).map(([k,v])=>k+": "+v).join("\n"),
+   features_text:(product.features||[]).join("\n"),certifications_text:(product.certifications||[]).join("\n"),
+   featured:Boolean(product.featured),sort_order:String(product.sort_order??0),
+   skd_price_usd:p?.skd_price_usd==null?"":String(p.skd_price_usd),skd_price_cny:p?.skd_price_cny==null?"":String(p.skd_price_cny),
+   ckd_price_usd:p?.ckd_price_usd==null?"":String(p.ckd_price_usd),ckd_price_cny:p?.ckd_price_cny==null?"":String(p.ckd_price_cny),
+   packing_quantity_40hq:p?.packing_quantity_40hq==null?"":String(p.packing_quantity_40hq)
+  });
+  setProductCustomAttributes(product.custom_attributes||{});
+  setProductImage(null);setProductOpen(true);setError("");setNotice("");
+ }
+ function resetProductDraft(){
+  setProductDraft({id:"",name:"",model_code:"",category:"electric-motorcycles",factory_id:profile?.role==="factory"?(profile.factory_id||""):"",short_description:"",description:"",hero_image:"",gallery_text:"",specifications_text:"",features_text:"",certifications_text:"",featured:false,sort_order:"0",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
+  setProductCustomAttributes({});setProductImage(null);setProductOpen(true);setError("");setNotice("");
+ }
+ async function deleteProduct(product:Product){
+  if(!window.confirm("确认删除产品 "+product.name+"（"+(product.model_code||product.id)+"）？历史报价和订单将保留快照，但产品关联会被解除。"))return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   await req("products?id=eq."+encodeURIComponent(product.id),{method:"DELETE",headers:{Prefer:"return=minimal"}});
+   if(productDraft.id===product.id)resetProductDraft();
+   setNotice("产品已删除，历史报价与订单快照保留。");await loadProducts();
+  }catch(e){setError(e instanceof Error?e.message:"产品删除失败。请检查工厂权限或历史数据约束。");}
+  finally{setBusy(false);}
+ }
+ async function saveAttributeDefinition(e:React.FormEvent){
+  e.preventDefault();if(!profile)return;
+  const factoryId=profile.role==="factory"?profile.factory_id:attributeDraft.factory_id||null;
+  if(profile.role==="admin"&&!factoryId){setError("管理员创建自定义属性时必须指定工厂。");return;}
+  const fieldKey=attributeDraft.field_key.trim().toLowerCase().replace(/[^a-z0-9_]+/g,"_");
+  if(!fieldKey||!attributeDraft.label.trim()){setError("属性代码和显示名称不能为空。");return;}
+  const options=attributeDraft.data_type==="select"?attributeDraft.options.split(",").map(x=>x.trim()).filter(Boolean):[];
+  if(attributeDraft.data_type==="select"&&!options.length){setError("下拉单选属性至少需要一个选项。");return;}
+  setBusy(true);setError("");setNotice("");
+  try{
+   await req("crm_product_attribute_definitions",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({
+    factory_id:factoryId,field_key:fieldKey,label:attributeDraft.label.trim(),data_type:attributeDraft.data_type,
+    options,is_required:attributeDraft.is_required,sort_order:Number(attributeDraft.sort_order)||0
+   })});
+   setAttributeDraft(v=>({...v,field_key:"",label:"",options:""}));setAttributeOpen(false);
+   await loadProducts();setNotice("自定义产品属性已保存。");
+  }catch(e){setError(e instanceof Error?e.message:"自定义属性保存失败。字段代码可能重复。");}
+  finally{setBusy(false);}
+ }
+ async function deleteAttributeDefinition(def:AttributeDefinition){
+  if(!window.confirm("确认删除自定义属性 "+def.label+"？历史产品值将保留在 JSON 字段中，但不再显示输入控件。"))return;
+  try{await req("crm_product_attribute_definitions?id=eq."+encodeURIComponent(def.id),{method:"DELETE",headers:{Prefer:"return=minimal"}});await loadProducts();setNotice("自定义属性已删除。");}
+  catch(e){setError(e instanceof Error?e.message:"删除自定义属性失败。");}
+ }
+ async function saveProduct(e:React.FormEvent){
+  e.preventDefault();if(!profile)return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   const id=productDraft.id||crypto.randomUUID();
+   const factoryId=profile.role==="factory"?profile.factory_id:productDraft.factory_id;
+   if(!factoryId)throw new Error("请先选择所属工厂，工厂账号自动使用本厂。");
+   const parseLines=(value:string)=>value.split("\n").map(x=>x.trim()).filter(Boolean);
+   const specifications=Object.fromEntries(parseLines(productDraft.specifications_text).map(line=>{
+    const i=line.indexOf(":");return i<0?[line,""]:[line.slice(0,i).trim(),line.slice(i+1).trim()];
+   }).filter(([k])=>Boolean(k)));
+   const imageUrl=productImage?await uploadProductImage(productImage,id):productDraft.hero_image.trim()||null;
+   const gallery=parseLines(productDraft.gallery_text);
+   const prices={
+    skd_price_usd:productDraft.skd_price_usd||null,skd_price_cny:productDraft.skd_price_cny||null,
+    ckd_price_usd:productDraft.ckd_price_usd||null,ckd_price_cny:productDraft.ckd_price_cny||null,
+    packing_quantity_40hq:productDraft.packing_quantity_40hq||null
+   };
+   const product={
+    id,slug:slug(productDraft.model_code||productDraft.name)||id,name:productDraft.name.trim(),
+    model_code:productDraft.model_code.trim()||null,category:productDraft.category,factory_id:factoryId,
+    published:false,hero_image:imageUrl,image:imageUrl,gallery,specs:Object.entries(specifications).map(([k,v])=>k+": "+v),
+    features:parseLines(productDraft.features_text),specifications,certifications:parseLines(productDraft.certifications_text),
+    short_description:productDraft.short_description.trim()||null,description:productDraft.description.trim()||null,
+    featured:productDraft.featured,sort_order:Number(productDraft.sort_order)||0,custom_attributes:productCustomAttributes
+   };
+   if(!Object.values(prices).some(v=>v!==null))throw new Error("至少填写一项 SKD/CKD 价格或 40HQ 装箱量。");
+   if(productDraft.id){
+    const patch={...product};delete (patch as Record<string,unknown>).id;
+    await req("products?id=eq."+encodeURIComponent(id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({...patch,updated_at:new Date().toISOString()})});
+    await req("crm_product_prices?on_conflict=product_id",{method:"POST",headers:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({...prices,product_id:id,factory_id:factoryId,updated_by:userId})});
+    setNotice("产品资料、规格、自定义属性及价格已更新。");
+   }else{
+    await req<string>("rpc/crm_create_product_with_prices",{method:"POST",body:JSON.stringify({p_product:product,p_prices:prices})});
+    setNotice("新产品及价格已创建为内部草稿。");
+   }
+   setProductOpen(false);setProductDraft({id:"",name:"",model_code:"",category:"electric-motorcycles",factory_id:profile.role==="factory"?(profile.factory_id||""):"",short_description:"",description:"",hero_image:"",gallery_text:"",specifications_text:"",features_text:"",certifications_text:"",featured:false,sort_order:"0",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
+   setProductCustomAttributes({});setProductImage(null);
+   await loadProducts();
+  }catch(e){setError(e instanceof Error?e.message:"产品保存失败。");}
+  finally{setBusy(false);}
+ }
  async function createFactory(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");try{await req("crm_factories",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({...factoryDraft,status:"active"})});setFactoryDraft({factory_code:"",name:"",contact_name:"",email:"",phone:"",address:""});setFactoryOpen(false);setNotice("工厂档案已创建。现在可以为工厂分配账号并录入产品。");await loadProducts();}catch(e){setError(e instanceof Error?e.message:"工厂创建失败。");}finally{setBusy(false);}}
  async function adminAction(action:string,payload:Record<string,unknown>){const response=await fetch(API+"/functions/v1/crm-admin",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({action,...payload})});const data=await response.json() as {success?:boolean;data?:unknown;error?:string};if(!response.ok||!data.success)throw new Error(data.error||"管理员操作失败。");return data.data;}
  function beginEditAccount(a:Profile){
