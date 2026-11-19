@@ -102,16 +102,13 @@ export default function CRMApp(){
  async function logout(){try{if(token)await fetch(API+"/auth/v1/logout",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+token}});}finally{localStorage.removeItem(SESSION_KEY);setToken("");setUserId("");setProfile(null);setCustomers([]);setProducts([]);setSelected(null);setNotice("已安全退出。");}}
 
  const loadDashboard=useCallback(async()=>{try{
-  const [p,c,o]=await Promise.all([
+  const [p,metrics]=await Promise.all([
    req<Perf[]>("crm_sales_performance?select=*&order=order_total_usd.desc"),
-   req<Array<{id:string;status:string}>>("crm_customers?select=id,status&limit=5000"),
-   req<Array<{id:string;total_usd:number;total_cny:number}>>("crm_orders?select=id,total_usd,total_cny&status=neq.cancelled&limit=5000")
+   req<{customers:number;won:number;conversion:number;orders:number;usd:number;cny:number}>("rpc/crm_dashboard_summary",{method:"POST",body:"{}"})
   ]);
-  const won=c.filter(x=>x.status==="won").length;
   setPerf(p);setKpis({
-   customers:c.length,won,conversion:c.length?won/c.length*100:0,
-   usd:o.reduce((s,x)=>s+Number(x.total_usd||0),0),
-   cny:o.reduce((s,x)=>s+Number(x.total_cny||0),0),orders:o.length
+   customers:Number(metrics.customers||0),won:Number(metrics.won||0),conversion:Number(metrics.conversion||0),
+   usd:Number(metrics.usd||0),cny:Number(metrics.cny||0),orders:Number(metrics.orders||0)
   });
  }catch(e){setError(e instanceof Error?e.message:"看板加载失败。");}},[req]);
  const loadCustomers=useCallback(async()=>{setBusy(true);try{setCustomers(await req<Customer[]>("crm_customers?select=*&order=updated_at.desc&limit=1000"));}catch(e){setError(e instanceof Error?e.message:"客户加载失败。");}finally{setBusy(false);}},[req]);
