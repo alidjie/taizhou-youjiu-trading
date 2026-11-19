@@ -378,19 +378,20 @@ async function openQuote(quote:Quote){
    const seller=selectedQuote.seller_snapshot||{};
    const buyer=selectedQuote.buyer_snapshot||{};
    const logo=String(brand.logo_url||"");const stamp=String(brand.stamp_url||"");
-   const rows=quoteDetailItems.map(item=>"<tr><td>"+esc(item.line_no)+"</td><td>"+esc(item.model_code)+"</td><td>"+esc(item.product_name)+"<br><small>"+esc(item.description||"")+"</small></td><td>"+esc(item.price_basis)+"</td><td class='num'>"+esc(item.quantity)+"</td><td class='num'>"+esc(item.unit_price)+"</td><td class='num'>"+esc(item.line_total)+"</td><td class='num'>"+esc(item.packing_quantity||"")+"</td></tr>").join("");
+   const rows=quoteDetailItems.map(item=>"<tr><td>"+esc(item.line_no)+"</td><td>"+esc(item.model_code)+"</td><td>"+esc(item.product_name)+"<br><small>"+esc(item.description||"")+"</small></td><td>"+esc(item.price_basis.replace("_"," / "))+"</td><td class='num'>"+esc(item.quantity)+"</td><td class='num'>"+esc(Number(item.unit_price).toFixed(2))+"</td><td class='num'>"+esc(Number(item.line_total).toFixed(2))+"</td><td class='num'>"+esc(item.packing_quantity||"")+"</td></tr>").join("");
    const fields=[["Incoterms",selectedQuote.incoterm],["Validity",selectedQuote.valid_until],["Loading Port",selectedQuote.loading_port],["Destination Port",selectedQuote.destination_port],["Payment Terms",selectedQuote.payment_terms],["Delivery Terms",selectedQuote.delivery_terms],["Packaging",selectedQuote.packaging_terms],["Warranty",selectedQuote.warranty_terms]];
-   const html="<!doctype html><html><head><meta charset='utf-8'><title>Quotation "+esc(selectedQuote.quote_no)+"</title><style>@page{size:A4;margin:13mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#18232d;font-size:10px}h1{font-size:24px;letter-spacing:.08em;margin:0}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #263746;padding-bottom:12px}.top img{max-width:180px;max-height:60px;object-fit:contain}.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}.panel{border:1px solid #cbd5df;padding:10px;min-height:88px}.panel b{display:block;font-size:9px;color:#586779;text-transform:uppercase;margin-bottom:5px}.terms{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}.field{border:1px solid #d7dfe7;padding:6px;min-height:28px}.field b{display:block;font-size:8px;color:#647282;text-transform:uppercase}table{width:100%;border-collapse:collapse;margin-top:12px}th{background:#e9eef2;text-align:left;font-size:8px;text-transform:uppercase}td,th{border:1px solid #cbd5df;padding:6px;vertical-align:top}.num{text-align:right}.totals{text-align:right;font-size:12px;font-weight:bold;margin-top:10px;line-height:1.7}.bank{margin-top:14px;border:1px solid #cbd5df;padding:10px;line-height:1.6}.sign{display:flex;justify-content:flex-end;min-height:80px;margin-top:20px}.sign img{max-width:140px;max-height:78px;object-fit:contain}.footer{margin-top:18px;border-top:1px solid #ccd5dd;padding-top:7px;font-size:8px;color:#657382}</style></head><body>";
-   html+="<div class='top'><div>"+(logo?"<img src='"+esc(logo)+"' alt='Logo'>":"<strong>"+esc(seller.company_name||"YOUJIU")+"</strong>")+"</div><div style='text-align:right'><h1>QUOTATION</h1><div><b>Quotation No.:</b> "+esc(selectedQuote.quote_no)+"</div><div><b>Date:</b> "+esc(new Date(selectedQuote.created_at).toLocaleDateString("en-GB"))+"</div></div></div>";
+   let html="<!doctype html><html><head><meta charset='utf-8'><title>Quotation "+esc(selectedQuote.quote_no)+"</title><style>@page{size:A4;margin:13mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#18232d;font-size:10px;line-height:1.45}h1{font-size:24px;letter-spacing:.08em;margin:0}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #263746;padding-bottom:12px}.top img{max-width:180px;max-height:60px;object-fit:contain}.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}.panel{border:1px solid #cbd5df;padding:10px;min-height:88px}.panel b{display:block;font-size:9px;color:#586779;text-transform:uppercase;margin-bottom:5px}.terms{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:12px 0}.field{border:1px solid #d7dfe7;padding:6px;min-height:28px}.field b{display:block;font-size:8px;color:#647282;text-transform:uppercase}table{width:100%;border-collapse:collapse;margin-top:12px}th{background:#e9eef2;text-align:left;font-size:8px;text-transform:uppercase}td,th{border:1px solid #cbd5df;padding:6px;vertical-align:top}.num{text-align:right;white-space:nowrap}.totals{text-align:right;font-size:12px;font-weight:bold;margin-top:10px;line-height:1.7}.bank{margin-top:14px;border:1px solid #cbd5df;padding:10px;line-height:1.6}.sign{display:flex;justify-content:flex-end;min-height:80px;margin-top:20px}.sign img{max-width:140px;max-height:78px;object-fit:contain}.footer{margin-top:18px;border-top:1px solid #ccd5dd;padding-top:7px;font-size:8px;color:#657382}</style></head><body>";
+   html+="<div class='top'><div>"+(logo?"<img src='"+esc(logo)+"' alt='Logo'>":"<strong>"+esc(seller.company_name||"YOUJIU")+"</strong>")+"</div><div style='text-align:right'><h1>QUOTATION</h1><div><b>Quotation No.:</b> "+esc(selectedQuote.quote_no)+"</div><div><b>Date:</b> "+esc(new Date(selectedQuote.created_at).toLocaleDateString("en-GB"))+"</div><div><b>Valid Until:</b> "+esc(selectedQuote.valid_until||"—")+"</div></div></div>";
    html+="<div class='meta'><div class='panel'><b>Seller / Exporter</b><strong>"+esc(seller.company_name||"YOUJIU")+"</strong><div>"+esc(seller.address)+"</div><div>"+esc(seller.telephone)+" · "+esc(seller.email)+"</div><div>"+esc(seller.website)+"</div></div><div class='panel'><b>Buyer / Importer</b><strong>"+esc(buyer.company_name)+"</strong><div>"+esc(buyer.contact_name)+"</div><div>"+esc(buyer.address)+"</div><div>"+esc(buyer.country)+" · "+esc(buyer.city)+"</div><div>"+esc(buyer.email)+"</div></div></div>";
    html+="<div class='terms'>"+fields.map(([k,v])=>"<div class='field'><b>"+esc(k)+"</b>"+esc(v)+"</div>").join("")+"</div>";
-   html+="<table><thead><tr><th>NO.</th><th>ITEM / MODEL</th><th>PRODUCT DESCRIPTION</th><th>PRICE BASIS</th><th class='num'>QTY</th><th class='num'>UNIT PRICE</th><th class='num'>AMOUNT</th><th class='num'>40HQ QTY</th></tr></thead><tbody>"+rows+"</tbody></table>";
+   html+="<table><thead><tr><th>NO.</th><th>ITEM / MODEL</th><th>PRODUCT DESCRIPTION</th><th>PRICE BASIS</th><th class='num'>QTY</th><th class='num'>UNIT PRICE</th><th class='num'>AMOUNT</th><th class='num'>40HQ QTY</th></tr></thead><tbody>"+(rows||"<tr><td colspan='8'>No items</td></tr>")+"</tbody></table>";
    html+="<div class='totals'>TOTAL USD: "+esc(selectedQuote.total_usd)+"<br>TOTAL CNY: "+esc(selectedQuote.total_cny)+"</div>";
    html+="<div class='bank'><b>BANKING DETAILS</b><br>Bank Name: "+esc(seller.bank_name)+"<br>Bank Address: "+esc(seller.bank_address)+"<br>Beneficiary: "+esc(seller.beneficiary)+"<br>Account No.: "+esc(seller.account_number)+"<br>SWIFT: "+esc(seller.swift_code)+"</div>";
    html+="<div class='sign'>"+(stamp?"<img src='"+esc(stamp)+"' alt='Company Stamp'>":"<span>Authorized Signature / Company Stamp</span>")+"</div><div class='footer'>"+esc(seller.company_name||"YOUJIU")+" · "+esc(seller.website||"https://www.almcp.com")+" · This quotation is subject to the terms stated above.</div></body></html>";
-   const win=window.open("","_blank");
-   if(!win){setError("浏览器阻止了预览窗口，请允许弹出窗口后重试。");return;}
-   win.document.open();win.document.write(html);win.document.close();win.focus();win.print();
+   setQuotePreviewHtml(html);
+   setQuotePreviewZoom(100);
+   setQuotePreviewFullScreen(false);
+   setQuotePreviewOpen(true);
   }
   async function createQuoteEmailDraft(){
    if(!selectedQuote)return;
@@ -410,7 +411,7 @@ async function openQuote(quote:Quote){
    ].join("\n");
    setBusy(true);setError("");
    try{
-    await req("crm_quote_email_logs",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({quote_id:selectedQuote.id,customer_id:selectedQuote.customer_id,logged_by:userId,recipient,subject,body,method:"mailto_draft",sent_at:new Date().toISOString(),metadata:{delivery_confirmed:false,note:"Email draft opened in the user's mail client; actual sending is not confirmed."}})});
+    await req("crm_quote_email_logs",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({quote_id:selectedQuote.id,customer_id:selectedQuote.customer_id,logged_by:userId,recipient,subject,body,method:"email_client",sent_at:new Date().toISOString(),metadata:{delivery_confirmed:false,note:"Email draft opened in the user's mail client; actual sending is not confirmed."}})});
     const logs=await req<QuoteEmailLog[]>("crm_quote_email_logs?select=id,recipient,subject,method,sent_at,body,metadata&quote_id=eq."+encodeURIComponent(selectedQuote.id)+"&order=sent_at.desc&limit=100");
     setQuoteEmailLogs(logs);setNotice("已调起邮件客户端并记录邮件草稿。请在邮件客户端附上报价 PDF 后自行发送；CRM 不会把草稿标记为已送达。");
     window.location.href="mailto:"+encodeURIComponent(recipient)+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
@@ -438,177 +439,6 @@ function addQuoteLine(){
   setQuoteLineDraft(v=>({...v,product_id:""}));
 }
 
-
-async function openQuote(row:Quote){
- setError("");setNotice("");
- try{
-  const [quoteRows,items,logs]=await Promise.all([
-   req<Quote[]>("crm_quotes?select=*&id=eq."+encodeURIComponent(row.id)+"&limit=1"),
-   req<QuoteItem[]>("crm_quote_items?select=*&quote_id=eq."+encodeURIComponent(row.id)+"&order=line_no.asc&limit=500"),
-   req<QuoteEmailLog[]>("crm_quote_email_logs?select=id,recipient,subject,method,sent_at,body,metadata&quote_id=eq."+encodeURIComponent(row.id)+"&order=sent_at.desc&limit=100")
-  ]);
-  const q=quoteRows[0]||row;
-  setSelectedQuote(q);
-  setQuoteEditDraft({
-   valid_until:q.valid_until||"",incoterm:q.incoterm||"FOB",loading_port:q.loading_port||"",
-   destination_port:q.destination_port||"",payment_terms:q.payment_terms||"",
-   delivery_terms:q.delivery_terms||"",packaging_terms:q.packaging_terms||"",
-   warranty_terms:q.warranty_terms||"",remarks:q.remarks||""
-  });
-  setQuoteDetailItems(items);
-  setQuoteOriginalItemIds(items.map(x=>x.id));
-  setQuoteEmailLogs(logs);
- }catch(e){setError(e instanceof Error?e.message:"报价详情加载失败。");}
-}
-function updateQuoteItem(itemId:string,key:"quantity"|"unit_price"|"product_name"|"description",value:string){
- setQuoteDetailItems(rows=>rows.map(row=>{
-  if(row.id!==itemId)return row;
-  if(key==="quantity"||key==="unit_price"){
-   const n=value===""?0:Number(value);
-   const updated={...row,[key]:n};
-   updated.line_total=Number(updated.quantity||0)*Number(updated.unit_price||0);
-   return updated;
-  }
-  return {...row,[key]:value};
- }));
-}
-function addQuoteDetailLine(){
- if(!selectedQuote)return;
- const product=products.find(p=>p.id===quoteLineDraft.product_id);
- const price=productPrices.find(p=>p.product_id===quoteLineDraft.product_id);
- if(!product||!price){setError("请选择已配置价格的产品。");return;}
- const unitPrice=Number((price as unknown as Record<string,number>)[quoteLineDraft.price_basis]||0);
- if(unitPrice<=0){setError("该产品尚未配置此报价类型的价格。");return;}
- const quantity=Number(quoteLineDraft.quantity);
- if(!Number.isFinite(quantity)||quantity<=0){setError("数量必须大于零。");return;}
- const line:QuoteItem={
-  id:"new-"+crypto.randomUUID(),quote_id:selectedQuote.id,product_id:product.id,factory_id:product.factory_id,
-  line_no:quoteDetailItems.length+1,model_code:product.model_code,product_name:product.name,
-  description:null,price_basis:quoteLineDraft.price_basis,quantity,packing_quantity:price.packing_quantity_40hq,
-  unit_price:unitPrice,line_total:unitPrice*quantity,
-  product_snapshot:{id:product.id,slug:product.slug,name:product.name,model_code:product.model_code,category:product.category},
-  image_url:product.hero_image||product.image
- };
- setQuoteDetailItems(rows=>[...rows,line]);
- setError("");
-}
-async function saveQuoteDetails(e:React.FormEvent){
- e.preventDefault();
- if(!selectedQuote)return;
- if(selectedQuote.status==="converted"){setError("已转订单的报价单不能再修改。");return;}
- if(!quoteDetailItems.length){setError("报价单至少保留一条产品明细。");return;}
- if(quoteDetailItems.some(x=>!Number.isFinite(Number(x.quantity))||Number(x.quantity)<=0||!Number.isFinite(Number(x.unit_price))||Number(x.unit_price)<0)){
-  setError("产品数量必须大于零，单价不能小于零。");return;
- }
- setBusy(true);setError("");setNotice("");
- try{
-  await req("crm_quotes?id=eq."+encodeURIComponent(selectedQuote.id),{
-   method:"PATCH",headers:{Prefer:"return=minimal"},
-   body:JSON.stringify({
-    valid_until:quoteEditDraft.valid_until||null,incoterm:quoteEditDraft.incoterm||null,
-    loading_port:quoteEditDraft.loading_port||null,destination_port:quoteEditDraft.destination_port||null,
-    payment_terms:quoteEditDraft.payment_terms||null,delivery_terms:quoteEditDraft.delivery_terms||null,
-    packaging_terms:quoteEditDraft.packaging_terms||null,warranty_terms:quoteEditDraft.warranty_terms||null,
-    remarks:quoteEditDraft.remarks||null,updated_at:new Date().toISOString()
-   })
-  });
-  const currentIds=quoteDetailItems.filter(x=>!x.id.startsWith("new-")).map(x=>x.id);
-  const deletedIds=quoteOriginalItemIds.filter(id=>!currentIds.includes(id));
-  for(const id of deletedIds){
-   await req("crm_quote_items?id=eq."+encodeURIComponent(id),{method:"DELETE",headers:{Prefer:"return=minimal"}});
-  }
-  for(let i=0;i<quoteDetailItems.length;i++){
-   const item=quoteDetailItems[i];
-   const itemPayload={
-    line_no:i+1,product_name:item.product_name,description:item.description,
-    quantity:Number(item.quantity),unit_price:Number(item.unit_price),
-    line_total:Number(item.quantity)*Number(item.unit_price)
-   };
-   if(item.id.startsWith("new-")){
-    await req("crm_quote_items",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({
-     quote_id:selectedQuote.id,product_id:item.product_id,factory_id:item.factory_id,
-     ...itemPayload,model_code:item.model_code,price_basis:item.price_basis,
-     packing_quantity:item.packing_quantity,product_snapshot:item.product_snapshot,image_url:item.image_url
-    })});
-   }else{
-    await req("crm_quote_items?id=eq."+encodeURIComponent(item.id),{
-     method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify(itemPayload)
-    });
-   }
-  }
-  await loadQuotes();
-  await openQuote(selectedQuote);
-  await loadDashboard();
-  setNotice("报价单内容已保存，USD/CNY 合计由数据库自动重新计算。");
- }catch(e){setError(e instanceof Error?e.message:"报价单保存失败。请检查产品明细和权限。");}
- finally{setBusy(false);}
-}
-function previewQuote(){
- if(!selectedQuote)return;
- const esc=(v:unknown)=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","""":"&quot;","'":"&#39;"}[ch]||ch));
- const get=(o:Record<string,unknown>|null|undefined,k:string)=>String(o?.[k]??"");
- const buyer=selectedQuote.buyer_snapshot||{};
- const seller=selectedQuote.seller_snapshot||{};
- const brand=selectedQuote.branding_snapshot||{};
- const title="QUOTATION";
- const rows=quoteDetailItems.map((x,i)=>"<tr><td>"+(i+1)+"</td><td>"+esc(x.model_code)+"</td><td>"+esc(x.product_name)+"<br><small>"+esc(x.description)+"</small></td><td>"+esc(x.price_basis.replace("_"," / "))+"</td><td class='num'>"+esc(x.quantity)+"</td><td class='num'>"+esc(x.unit_price.toFixed(2))+"</td><td class='num'>"+esc(x.line_total.toFixed(2))+"</td></tr>").join("");
- const logo=get(brand,"logo_url");
- const stamp=get(brand,"stamp_url");
- const company=esc(get(brand,"legal_name")||get(seller,"company_name")||"YOUJIU");
- const bank="<b>Bank:</b> "+esc(get(brand,"bank_name"))+" &nbsp; <b>Beneficiary:</b> "+esc(get(brand,"beneficiary"))+" &nbsp; <b>Account:</b> "+esc(get(brand,"account_number"))+" &nbsp; <b>SWIFT:</b> "+esc(get(brand,"swift_code"));
- const html=[
- "<!doctype html><html><head><meta charset='utf-8'><title>Quotation "+esc(selectedQuote.quote_no)+"</title><style>",
- "@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#17212b;font-size:11px;line-height:1.45}",
- ".top{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #263746;padding-bottom:12px;margin-bottom:18px}.top img{max-width:190px;max-height:65px;object-fit:contain}",
- "h1{font-size:24px;letter-spacing:.06em;margin:0 0 6px}.muted{color:#657482}.meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}.box{border:1px solid #cbd5df;padding:10px;min-height:88px}.box b{display:block;text-transform:uppercase;font-size:9px;color:#667482;margin-bottom:6px}",
- "table{width:100%;border-collapse:collapse;margin-top:18px}th{background:#e9eef2;text-align:left;font-size:9px;text-transform:uppercase}td,th{border:1px solid #cbd5df;padding:7px;vertical-align:top}.num{text-align:right;white-space:nowrap}",
- ".terms{margin-top:16px;border:1px solid #cbd5df;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}.totals{text-align:right;margin-top:14px;font-size:14px;font-weight:bold}.signature{display:flex;justify-content:flex-end;align-items:end;min-height:110px;margin-top:24px}.signature img{max-height:85px;max-width:160px;object-fit:contain}.footer{border-top:1px solid #cbd5df;margin-top:25px;padding-top:8px;font-size:9px;color:#657482}</style></head><body>",
- "<div class='top'><div>"+(logo?"<img src='"+esc(logo)+"' alt='Logo'>":"<strong>"+company+"</strong>")+"</div><div style='text-align:right'><h1>QUOTATION</h1><b>Quote No.:</b> "+esc(selectedQuote.quote_no)+"<br><b>Date:</b> "+esc(new Date(selectedQuote.created_at).toLocaleDateString("en-GB"))+"<br><b>Valid Until:</b> "+esc(selectedQuote.valid_until||"—")+"</div></div>",
- "<div class='meta'><div class='box'><b>Seller / Exporter</b><strong>"+company+"</strong><br>"+esc(get(brand,"address")||get(seller,"address"))+"<br>"+esc(get(brand,"telephone")||get(seller,"telephone"))+"<br>"+esc(get(brand,"email")||get(seller,"email"))+"<br>"+esc(get(brand,"website")||get(seller,"website"))+"</div>",
- "<div class='box'><b>Buyer / Importer</b><strong>"+esc(get(buyer,"company_name"))+"</strong><br>"+esc(get(buyer,"contact_name"))+"<br>"+esc(get(buyer,"address"))+"<br>"+esc(get(buyer,"country"))+"<br>"+esc(get(buyer,"email"))+"</div></div>",
- "<table><thead><tr><th>No.</th><th>ITEM / Model</th><th>Product Description</th><th>Condition</th><th class='num'>Qty</th><th class='num'>Unit Price</th><th class='num'>Amount</th></tr></thead><tbody>"+(rows||"<tr><td colspan='7'>No items</td></tr>")+"</tbody></table>",
- "<div class='totals'>Total USD: "+esc(cash(selectedQuote.total_usd,"USD"))+" &nbsp; | &nbsp; Total CNY: "+esc(cash(selectedQuote.total_cny,"CNY"))+"</div>",
- "<div class='terms'><div><b>Incoterms:</b> "+esc(selectedQuote.incoterm||"—")+"</div><div><b>Loading Port:</b> "+esc(selectedQuote.loading_port||"—")+"</div><div><b>Destination Port:</b> "+esc(selectedQuote.destination_port||"—")+"</div><div><b>Payment Terms:</b> "+esc(selectedQuote.payment_terms||"—")+"</div><div><b>Delivery Terms:</b> "+esc(selectedQuote.delivery_terms||"—")+"</div><div><b>Packaging:</b> "+esc(selectedQuote.packaging_terms||"—")+"</div><div><b>Warranty:</b> "+esc(selectedQuote.warranty_terms||"—")+"</div><div><b>Remarks:</b> "+esc(selectedQuote.remarks||"—")+"</div></div>",
- "<p style='margin-top:16px'>"+bank+"</p><div class='signature'>"+(stamp?"<img src='"+esc(stamp)+"' alt='Company Stamp'>":"<div>Authorized Signature / Company Stamp</div>")+"</div>",
- "<div class='footer'>"+company+" · "+esc(get(brand,"website")||get(seller,"website"))+"</div></body></html>"
- ].join("");
- setQuotePreviewHtml(html);
- setQuotePreviewZoom(100);
- setQuotePreviewFullScreen(false);
- setQuotePreviewOpen(true);
-}
-async function createQuoteEmailDraft(){
- if(!selectedQuote)return;
- const buyer=selectedQuote.buyer_snapshot||{};
- const recipient=String(buyer.email||"").trim();
- if(!recipient){setError("该客户档案没有邮箱地址，请先补充客户邮箱。");return;}
- const subject="Quotation "+selectedQuote.quote_no+" - YOUJIU";
- const body=[
-  "Dear "+String(buyer.contact_name||"Customer")+",",
-  "",
-  "Please find our quotation "+selectedQuote.quote_no+" for your review.",
-  "Total USD: "+cash(selectedQuote.total_usd,"USD"),
-  "Total CNY: "+cash(selectedQuote.total_cny,"CNY"),
-  "Incoterms: "+(selectedQuote.incoterm||""),
-  "Payment Terms: "+(selectedQuote.payment_terms||""),
-  "",
-  "Please let us know if you need any adjustment.",
-  "",
-  "Best regards,",
-  "YOUJIU Export Team"
- ].join("\n");
- try{
-  const mailto="mailto:"+encodeURIComponent(recipient)+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
-  window.location.href=mailto;
-  await req("crm_quote_email_logs",{
-   method:"POST",headers:{Prefer:"return=minimal"},
-   body:JSON.stringify({quote_id:selectedQuote.id,customer_id:selectedQuote.customer_id,logged_by:userId,recipient,subject,body,method:"email_client",metadata:{event:"draft_opened"}})
-  });
-  const logs=await req<QuoteEmailLog[]>("crm_quote_email_logs?select=id,recipient,subject,method,sent_at,body,metadata&quote_id=eq."+encodeURIComponent(selectedQuote.id)+"&order=sent_at.desc&limit=100");
-  setQuoteEmailLogs(logs);
-  setNotice("已调用邮件客户端生成草稿并记录操作。是否真正发送，需要在邮件客户端中确认。");
- }catch(e){setError(e instanceof Error?e.message:"邮件草稿记录失败。");}
-}
 
  async function changePassword(e:React.FormEvent){e.preventDefault();setError("");setNotice("");if(newPassword.length<8){setError("新密码至少需要 8 位。");return;}if(newPassword!==confirmPassword){setError("两次输入的新密码不一致。");return;}setBusy(true);try{const r=await fetch(API+"/auth/v1/user",{method:"PUT",headers:hdr(token),body:JSON.stringify({password:newPassword})});if(!r.ok)throw new Error(await r.text());setNewPassword("");setConfirmPassword("");setNotice("登录密码已修改。");}catch(e){setError(e instanceof Error?e.message:"密码修改失败。");}finally{setBusy(false);}}
 
@@ -753,9 +583,31 @@ async function createQuoteEmailDraft(){
       <div className="flex flex-wrap justify-end gap-4 text-sm font-bold"><span>USD 总额：{cash(quoteDetailItems.filter(x=>x.price_basis.endsWith("USD")).reduce((a,x)=>a+Number(x.quantity)*Number(x.unit_price),0),"USD")}</span><span>CNY 总额：{cash(quoteDetailItems.filter(x=>x.price_basis.endsWith("CNY")).reduce((a,x)=>a+Number(x.quantity)*Number(x.unit_price),0),"CNY")}</span></div>
       <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4"><button disabled={busy} className={btn}>{busy?"正在保存…":"保存报价修改"}</button><span className="self-center text-xs text-slate-500">金额按 USD/CNY 独立汇总；保存后报价编号不变。</span></div>
       <div className="border-t border-slate-200 pt-4"><h4 className="font-bold">邮件发送 / 草稿记录</h4><p className="mt-1 text-xs text-slate-500">“生成邮件草稿”会调用本机默认邮件客户端，并记录草稿生成行为；CRM 无法确认邮件是否真正发送或送达。请手动附上已导出的报价 PDF。</p>
-       <div className="mt-3 space-y-2">{quoteEmailLogs.map(log=><div key={log.id} className="rounded-lg border border-slate-200 p-3 text-sm"><div className="flex flex-wrap justify-between gap-2"><b>{log.subject}</b><span className="text-xs text-slate-400">{new Date(log.sent_at).toLocaleString("zh-CN")}</span></div><div className="mt-1 text-slate-600">收件人：{log.recipient} · 方式：{log.method==="mailto_draft"?"邮件客户端草稿":"未知"}</div><div className="mt-1 text-xs text-amber-700">草稿已记录；实际发送状态未确认。</div></div>)}{!quoteEmailLogs.length&&<p className="text-sm text-slate-400">暂无邮件草稿/发送记录。</p>}</div>
+       <div className="mt-3 space-y-2">{quoteEmailLogs.map(log=><div key={log.id} className="rounded-lg border border-slate-200 p-3 text-sm"><div className="flex flex-wrap justify-between gap-2"><b>{log.subject}</b><span className="text-xs text-slate-400">{new Date(log.sent_at).toLocaleString("zh-CN")}</span></div><div className="mt-1 text-slate-600">收件人：{log.recipient} · 方式：{log.method==="email_client"?"邮件客户端草稿":"其他记录"}</div><div className="mt-1 text-xs text-amber-700">草稿已记录；实际发送状态未确认。</div></div>)}{!quoteEmailLogs.length&&<p className="text-sm text-slate-400">暂无邮件草稿/发送记录。</p>}</div>
       </div>
      </form>}
+     {quotePreviewOpen&&<div className="fixed inset-0 z-[70] bg-slate-950/75 p-2 sm:p-5" role="dialog" aria-modal="true" aria-label="英文报价单预览">
+      <div className={"mx-auto flex h-full flex-col overflow-hidden rounded-xl bg-white shadow-2xl "+(quotePreviewFullScreen?"w-full":"max-w-6xl")}>
+       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-3 sm:px-5">
+        <div><div className="font-bold">英文报价单预览</div><div className="text-xs text-slate-500">{selectedQuote?.quote_no||""} · 缩放 {quotePreviewZoom}%</div></div>
+        <div className="flex flex-wrap items-center gap-2">
+         <label className="flex items-center gap-2 text-xs text-slate-600">缩放
+          <input aria-label="预览缩放" type="range" min="50" max="300" step="5" value={quotePreviewZoom} onChange={e=>setQuotePreviewZoom(Number(e.target.value))} className="w-28"/>
+         </label>
+         <button type="button" onClick={()=>setQuotePreviewZoom(100)} className="rounded border px-2 py-1.5 text-xs">实际大小</button>
+         <button type="button" onClick={()=>setQuotePreviewZoom(75)} className="rounded border px-2 py-1.5 text-xs">适合宽度</button>
+         <button type="button" onClick={()=>setQuotePreviewFullScreen(v=>!v)} className="rounded border px-2 py-1.5 text-xs">{quotePreviewFullScreen?"退出全屏":"全屏"}</button>
+         <button type="button" onClick={()=>quotePreviewFrame.current?.contentWindow?.print()} className="rounded bg-slate-900 px-3 py-1.5 text-xs font-bold text-white">打印 / 保存 PDF</button>
+         <button type="button" onClick={()=>setQuotePreviewOpen(false)} className="rounded border px-3 py-1.5 text-xs">关闭</button>
+        </div>
+       </div>
+       <div className="min-h-0 flex-1 overflow-auto bg-slate-200 p-2 sm:p-4">
+        <div className="mx-auto bg-white shadow-lg" style={{width:(10000/quotePreviewZoom)+"%",height:"calc(100vh - 145px)",transform:"scale("+(quotePreviewZoom/100)+")",transformOrigin:"top left"}}>
+         <iframe ref={quotePreviewFrame} title="Quotation PDF preview" srcDoc={quotePreviewHtml} className="h-full w-full border-0 bg-white"/>
+        </div>
+       </div>
+      </div>
+     </div>}
     </div>}{module==="orders"&&profile.role!=="factory"&&<div className="space-y-4">
      <div className={panel}>
       <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-xl font-black">订单管理</h2><p className="mt-2 text-sm text-slate-500">从报价转入的订单在此维护状态、预计交付日期、实际交付日期及进度历史。</p></div><button onClick={loadOrders} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">刷新订单</button></div>
