@@ -102,13 +102,17 @@ export default function CRMApp(){
  async function logout(){try{if(token)await fetch(API+"/auth/v1/logout",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+token}});}finally{localStorage.removeItem(SESSION_KEY);setToken("");setUserId("");setProfile(null);setCustomers([]);setProducts([]);setSelected(null);setNotice("已安全退出。");}}
 
  const loadDashboard=useCallback(async()=>{try{
-  const p=await req<Perf[]>("crm_sales_performance?select=*&order=order_total_usd.desc");
-  const customers=p.reduce((s,x)=>s+Number(x.customer_count||0),0);
-  const won=p.reduce((s,x)=>s+Number(x.won_customer_count||0),0);
-  const orders=p.reduce((s,x)=>s+Number(x.order_count||0),0);
-  const usd=p.reduce((s,x)=>s+Number(x.order_total_usd||0),0);
-  const cny=p.reduce((s,x)=>s+Number(x.order_total_cny||0),0);
-  setPerf(p);setKpis({customers,won,conversion:customers?won/customers*100:0,usd,cny,orders});
+  const [p,c,o]=await Promise.all([
+   req<Perf[]>("crm_sales_performance?select=*&order=order_total_usd.desc"),
+   req<Array<{id:string;status:string}>>("crm_customers?select=id,status&limit=5000"),
+   req<Array<{id:string;total_usd:number;total_cny:number}>>("crm_orders?select=id,total_usd,total_cny&status=neq.cancelled&limit=5000")
+  ]);
+  const won=c.filter(x=>x.status==="won").length;
+  setPerf(p);setKpis({
+   customers:c.length,won,conversion:c.length?won/c.length*100:0,
+   usd:o.reduce((s,x)=>s+Number(x.total_usd||0),0),
+   cny:o.reduce((s,x)=>s+Number(x.total_cny||0),0),orders:o.length
+  });
  }catch(e){setError(e instanceof Error?e.message:"看板加载失败。");}},[req]);
  const loadCustomers=useCallback(async()=>{setBusy(true);try{setCustomers(await req<Customer[]>("crm_customers?select=*&order=updated_at.desc&limit=1000"));}catch(e){setError(e instanceof Error?e.message:"客户加载失败。");}finally{setBusy(false);}},[req]);
  const loadProducts=useCallback(async()=>{setBusy(true);try{const [rows,priceRows,factoryRows,attributeRows]=await Promise.all([req<Product[]>("products?select=*&order=created_at.desc&limit=2000"),req<ProductPrice[]>("crm_product_prices?select=product_id,factory_id,skd_price_usd,skd_price_cny,ckd_price_usd,ckd_price_cny,packing_quantity_40hq&limit=2000"),req<Factory[]>("crm_factories?select=id,factory_code,name,status&order=name"),req<AttributeDefinition[]>("crm_product_attribute_definitions?select=*&order=factory_id.asc,sort_order.asc&limit=500")]);setProducts(rows);setProductPrices(priceRows);setFactories(factoryRows);setAttributeDefinitions(attributeRows);}catch(e){setError(e instanceof Error?e.message:"产品加载失败。");}finally{setBusy(false);}},[req]);
