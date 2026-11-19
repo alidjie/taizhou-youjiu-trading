@@ -307,13 +307,26 @@ export default function CRMApp(){
     if(!selectedCustomer) throw new Error("请先选择客户。");
     if(!quoteItems.length) throw new Error("报价至少需要一条产品明细。");
     const linesForRpc=quoteItems.map(line=>({product_id:line.product_id,price_basis:line.price_basis,quantity:Number(line.quantity)}));
+    const factoryIds=[...new Set(quoteItems.map(line=>products.find(p=>p.id===line.product_id)?.factory_id).filter((x):x is string=>Boolean(x)))];
+    let brandRows:Branding[]=[];
+    if(factoryIds.length===1)brandRows=await req<Branding[]>("crm_branding_settings?select=*&scope=eq.factory&factory_id=eq."+encodeURIComponent(factoryIds[0])+"&limit=1");
+    if(!brandRows.length)brandRows=await req<Branding[]>("crm_branding_settings?select=*&scope=eq.company&limit=1");
+    const quoteBrand=brandRows[0]||null;
+    const sellerSnapshot={
+      company_name:quoteBrand?.legal_name||"YOUJIU",address:quoteBrand?.address||"",
+      telephone:quoteBrand?.telephone||"",email:quoteBrand?.email||"",
+      website:quoteBrand?.website||"https://www.almcp.com",
+      bank_name:quoteBrand?.bank_name||"",bank_address:quoteBrand?.bank_address||"",
+      beneficiary:quoteBrand?.beneficiary||"",account_number:quoteBrand?.account_number||"",
+      swift_code:quoteBrand?.swift_code||""
+    };
     const result=await req<{id:string;quote_no:string}>("rpc/crm_create_quote",{
       method:"POST",
       body:JSON.stringify({p_quote:{
         customer_id:quoteCustomerId,valid_until:quoteValidUntil||null,incoterm:quoteIncoterm,
         loading_port:quoteLoadingPort,destination_port:quoteDestinationPort,
         payment_terms:quotePaymentTerms,delivery_terms:quoteDeliveryTerms,remarks:quoteRemarks,
-        seller_snapshot:{company_name:"YOUJIU",website:"https://www.almcp.com"}
+        seller_snapshot:sellerSnapshot,branding_snapshot:quoteBrand||{}
       },p_items:linesForRpc})
     });
     setQuoteOpen(false);setQuoteItems([]);setQuoteCustomerId("");setQuoteValidUntil("");
