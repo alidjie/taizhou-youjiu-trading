@@ -851,7 +851,7 @@ export default function AdminDashboard() {
     <header className="bg-[#101923] text-white px-5 md:px-8 py-4">
       <div className="max-w-[1500px] mx-auto flex items-center justify-between gap-4">
         <Link href="/" className="font-black tracking-[.16em] text-lg md:text-xl">YOUJIU <span className="text-[#b8ed36]">/</span> CMS</Link>
-        <div className="flex items-center gap-3"><Link href="/admin/translations" className="text-xs border border-[#b8ed36] text-[#b8ed36] px-3 py-2 hover:bg-[#b8ed36] hover:text-[#101923]">多语言翻译管理</Link><span className="hidden sm:block text-[10px] text-slate-400 tracking-widest">CONTENT MANAGEMENT</span><button onClick={()=>void signOut()} className="text-xs border border-white/20 px-3 py-2 hover:border-[#b8ed36]">退出登录</button></div>
+        <div className="flex items-center gap-3"><Link href="/crm" className="text-xs border border-[#b8ed36] text-[#b8ed36] px-3 py-2 hover:bg-[#b8ed36] hover:text-[#101923]">外贸 CRM</Link><Link href="/admin/translations" className="text-xs border border-[#b8ed36] text-[#b8ed36] px-3 py-2 hover:bg-[#b8ed36] hover:text-[#101923]">多语言翻译管理</Link><span className="hidden sm:block text-[10px] text-slate-400 tracking-widest">CONTENT MANAGEMENT</span><button onClick={()=>void signOut()} className="text-xs border border-white/20 px-3 py-2 hover:border-[#b8ed36]">退出登录</button></div>
       </div>
     </header>
     <div className="max-w-[1500px] mx-auto px-4 md:px-8 py-7">
