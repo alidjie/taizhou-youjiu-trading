@@ -20,7 +20,7 @@ export function middleware(request: NextRequest) {
   // The CRM runs on its own subdomain. Internally map its root to /crm
   // without exposing /crm in the browser URL or applying the public-site locale redirect.
   if (hostname === "crm.almcp.com") {
-    if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname === "/favicon.ico" || /\\.[^/]+$/.test(pathname)) {
+    if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname === "/favicon.ico" || /\.[^/]+$/.test(pathname)) {
       return NextResponse.next();
     }
 
