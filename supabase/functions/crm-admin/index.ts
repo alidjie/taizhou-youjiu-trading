@@ -48,6 +48,8 @@ Deno.serve(async (req: Request) => {
   try {
     const body = await req.json() as Record<string, unknown>;
     const action = String(body.action || "");
+    const validUsername = (value: string) => /^[a-z0-9][a-z0-9._-]{2,31}$/.test(value);
+    const validEmail = (value: string) => /^[^\s@,()]+@[^\s@,()]+\.[^\s@,()]+$/.test(value);
 
     if (action === "create_factory") {
       const factory_code = String(body.factory_code || "").trim().toUpperCase();
@@ -76,8 +78,14 @@ Deno.serve(async (req: Request) => {
       const password = String(body.password || "");
       const role = String(body.role || "");
       const factory_id = role === "factory" ? String(body.factory_id || "") : null;
-      if (!username || !email || !full_name || password.length < 10 || !["admin", "sales", "factory"].includes(role)) {
-        return json({ error: "Username, valid email, full name, role and a password of at least 10 characters are required." }, 400);
+      if (!validUsername(username)) {
+        return json({ error: "用户名必须为 3–32 位小写英文字母、数字、点、下划线或连字符，且以字母或数字开头。" }, 400);
+      }
+      if (!validEmail(email)) {
+        return json({ error: "请输入有效的登录邮箱地址。" }, 400);
+      }
+      if (!full_name || password.length < 10 || !["admin", "sales", "factory"].includes(role)) {
+        return json({ error: "姓名、角色不能为空，初始密码至少 10 位。" }, 400);
       }
       if (role === "factory" && !factory_id) return json({ error: "Factory users must be assigned to a factory." }, 400);
       const exists = await rest(`crm_user_profiles?select=user_id&or=(username.eq.${encodeURIComponent(username)},email.eq.${encodeURIComponent(email)})&limit=1`);
@@ -118,8 +126,14 @@ Deno.serve(async (req: Request) => {
       const role = String(body.role || "");
       const factory_id = role === "factory" ? String(body.factory_id || "") : null;
 
-      if (!user_id || !username || !email || !full_name || !["admin", "sales", "factory"].includes(role)) {
-        return json({ error: "User ID, username, valid email, full name and role are required." }, 400);
+      if (!user_id || !full_name || !["admin", "sales", "factory"].includes(role)) {
+        return json({ error: "User ID, full name and role are required." }, 400);
+      }
+      if (!validUsername(username)) {
+        return json({ error: "用户名必须为 3–32 位小写英文字母、数字、点、下划线或连字符，且以字母或数字开头。" }, 400);
+      }
+      if (!validEmail(email)) {
+        return json({ error: "请输入有效的登录邮箱地址。" }, 400);
       }
       if (role === "factory" && !factory_id) {
         return json({ error: "Factory users must be assigned to a factory." }, 400);
