@@ -245,6 +245,9 @@ Deno.serve(async (req: Request) => {
         `crm_quotes?select=id&owner_id=eq.${encodeURIComponent(user_id)}&limit=1`,
         `crm_orders?select=id&owner_id=eq.${encodeURIComponent(user_id)}&limit=1`,
         `crm_customer_followups?select=id&created_by=eq.${encodeURIComponent(user_id)}&limit=1`,
+        `crm_order_updates?select=id&updated_by=eq.${encodeURIComponent(user_id)}&limit=1`,
+        `crm_quote_email_logs?select=id&logged_by=eq.${encodeURIComponent(user_id)}&limit=1`,
+        `crm_trade_documents?select=id&created_by=eq.${encodeURIComponent(user_id)}&limit=1`,
       ];
       for (const path of checks) {
         const check = await rest(path);
