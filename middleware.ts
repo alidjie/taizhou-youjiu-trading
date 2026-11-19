@@ -16,7 +16,7 @@ function detectLocale(request: NextRequest): Locale {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   // Resolve the public hostname reliably behind Vercel/proxy layers.
-  const rawHost = request.headers.get("host") || request.headers.get("x-forwarded-host") || request.nextUrl.hostname;
+  const rawHost = request.headers.get("x-forwarded-host") || request.headers.get("host") || request.nextUrl.hostname;
   const hostname = rawHost.split(",")[0].trim().split(":")[0].toLowerCase();
 
   // The CRM runs on its own subdomain. Internally map its root to /crm
