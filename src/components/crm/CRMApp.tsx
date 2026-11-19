@@ -17,6 +17,7 @@ type Quote = { id:string; quote_no:string; status:string; total_usd:number; tota
 type QuoteLineDraft = { id:string; product_id:string; price_basis:string; quantity:string };
 type Order = { id:string; order_no:string; customer_id:string; status:string; total_usd:number; total_cny:number; order_date:string; expected_delivery_date:string|null; actual_delivery_date:string|null; delivery_progress:string|null; buyer_snapshot:{company_name?:string;contact_name?:string;country?:string} };
 type OrderUpdate = { id:string; order_id:string; status:string|null; progress_description:string; expected_delivery_date:string|null; actual_delivery_date:string|null; created_at:string };
+type Branding = { id:string; scope:"company"|"factory"; factory_id:string|null; logo_url:string|null; stamp_url:string|null; legal_name:string|null; address:string|null; telephone:string|null; email:string|null; website:string|null; bank_name:string|null; bank_address:string|null; beneficiary:string|null; account_number:string|null; swift_code:string|null; additional_bank_details:Record<string,unknown> };
 type Doc = { id:string; document_type:string; document_no:string; status:string; document_date:string; order_id:string };
 type Perf = { sales_user_id:string; username:string; full_name:string; order_total_usd:number; order_total_cny:number; order_count:number; customer_count:number; won_customer_count:number; conversion_rate:number };
 type Module = "dashboard"|"customers"|"products"|"quotes"|"orders"|"documents"|"accounts"|"branding"|"password";
@@ -44,6 +45,7 @@ export default function CRMApp(){
  const [accountSearch,setAccountSearch]=useState(""),[accountRoleFilter,setAccountRoleFilter]=useState("all"),[editingAccount,setEditingAccount]=useState<Profile|null>(null),[editAccountDraft,setEditAccountDraft]=useState({username:"",email:"",full_name:"",role:"sales",factory_id:""});
  const [quotes,setQuotes]=useState<Quote[]>([]),[quoteOpen,setQuoteOpen]=useState(false),[quoteCustomerId,setQuoteCustomerId]=useState(""),[quoteValidUntil,setQuoteValidUntil]=useState(""),[quoteIncoterm,setQuoteIncoterm]=useState("FOB"),[quoteLoadingPort,setQuoteLoadingPort]=useState(""),[quoteDestinationPort,setQuoteDestinationPort]=useState(""),[quotePaymentTerms,setQuotePaymentTerms]=useState(""),[quoteDeliveryTerms,setQuoteDeliveryTerms]=useState(""),[quoteRemarks,setQuoteRemarks]=useState(""),[quoteItems,setQuoteItems]=useState<QuoteLineDraft[]>([]),[quoteLineDraft,setQuoteLineDraft]=useState({product_id:"",price_basis:"SKD_USD",quantity:"1"}),[orders,setOrders]=useState<Order[]>([]),[selectedOrder,setSelectedOrder]=useState<Order|null>(null),[orderUpdates,setOrderUpdates]=useState<OrderUpdate[]>([]),[orderDraft,setOrderDraft]=useState({status:"ordered",progress_description:"",expected_delivery_date:"",actual_delivery_date:""}),[docs,setDocs]=useState<Doc[]>([]),[accounts,setAccounts]=useState<Profile[]>([]);
  const [perf,setPerf]=useState<Perf[]>([]),[kpis,setKpis]=useState({customers:0,won:0,usd:0,cny:0,orders:0});
+  const [branding,setBranding]=useState<Branding|null>(null),[brandingDraft,setBrandingDraft]=useState({legal_name:"",address:"",telephone:"",email:"",website:"",bank_name:"",bank_address:"",beneficiary:"",account_number:"",swift_code:"",logo_url:"",stamp_url:""}),[brandingLogo,setBrandingLogo]=useState<File|null>(null),[brandingStamp,setBrandingStamp]=useState<File|null>(null);
  const [newPassword,setNewPassword]=useState(""),[confirmPassword,setConfirmPassword]=useState("");
 
  const req=useCallback(async<T,>(path:string,init:RequestInit={}):Promise<T>=>{
@@ -110,8 +112,20 @@ export default function CRMApp(){
    finally{setBusy(false);}
   }
   const loadDocs=useCallback(async()=>{try{setDocs(await req<Doc[]>("crm_trade_documents?select=id,document_type,document_no,status,document_date,order_id&order=document_date.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"单据加载失败。");}},[req]);
+ const loadBranding=useCallback(async()=>{
+   if(!profile)return;
+   try{
+    const scope=profile.role==="admin"?"company":"factory";
+    if(scope==="factory"&&!profile.factory_id)throw new Error("当前工厂账号未绑定工厂。");
+    const query=scope==="company"?"crm_branding_settings?select=*&scope=eq.company&limit=1":"crm_branding_settings?select=*&scope=eq.factory&factory_id=eq."+encodeURIComponent(profile.factory_id||"")+"&limit=1";
+    const rows=await req<Branding[]>(query);
+    const row=rows[0]||null;setBranding(row);
+    setBrandingDraft({legal_name:row?.legal_name||"",address:row?.address||"",telephone:row?.telephone||"",email:row?.email||"",website:row?.website||"",bank_name:row?.bank_name||"",bank_address:row?.bank_address||"",beneficiary:row?.beneficiary||"",account_number:row?.account_number||"",swift_code:row?.swift_code||"",logo_url:row?.logo_url||"",stamp_url:row?.stamp_url||""});
+    setBrandingLogo(null);setBrandingStamp(null);
+   }catch(e){setError(e instanceof Error?e.message:"报价单品牌设置加载失败。");}
+  },[profile,req]);
  const loadAccounts=useCallback(async()=>{try{const [rows,fs]=await Promise.all([req<Profile[]>("crm_user_profiles?select=user_id,username,email,full_name,role,factory_id,is_active,created_at&order=created_at.desc"),req<Factory[]>("crm_factories?select=id,factory_code,name,status&order=name")]);setAccounts(rows);setFactories(fs);}catch(e){setError(e instanceof Error?e.message:"账号加载失败。");}},[req]);
- useEffect(()=>{if(!profile)return;if(module==="dashboard")void loadDashboard();if(module==="customers")void loadCustomers();if(module==="products")void loadProducts();if(module==="quotes"){void loadQuotes();void loadCustomers();void loadProducts();}if(module==="orders")void loadOrders();if(module==="documents")void loadDocs();if(module==="accounts"&&profile.role==="admin")void loadAccounts();},[module,profile,loadDashboard,loadCustomers,loadProducts,loadQuotes,loadOrders,loadDocs,loadAccounts]);
+ useEffect(()=>{if(!profile)return;if(module==="dashboard")void loadDashboard();if(module==="customers")void loadCustomers();if(module==="products")void loadProducts();if(module==="quotes"){void loadQuotes();void loadCustomers();void loadProducts();}if(module==="orders")void loadOrders();if(module==="documents")void loadDocs();if(module==="accounts"&&profile.role==="admin")void loadAccounts();if(module==="branding")void loadBranding();},[module,profile,loadDashboard,loadCustomers,loadProducts,loadQuotes,loadOrders,loadDocs,loadAccounts,loadBranding]);
 
  function beginEditCustomer(c:Customer){
   setCustomerEditDraft({company_name:c.company_name,contact_name:c.contact_name,email:c.email||"",phone:c.phone||"",whatsapp:c.whatsapp||"",website:c.website||"",address:c.address||"",country:c.country,city:c.city||"",notes:c.notes||"",tags:(c.tags||[]).join(", ")});
@@ -164,6 +178,31 @@ export default function CRMApp(){
   setBusy(true);setError("");setNotice("");
   try{await adminAction("update_user",{user_id:editingAccount.user_id,...editAccountDraft});setEditingAccount(null);setNotice("账户资料与角色已更新。若修改了登录邮箱，请使用新邮箱登录。");await loadAccounts();}
   catch(e){setError(e instanceof Error?e.message:"账户资料更新失败。");}
+  finally{setBusy(false);}
+ }
+ async function uploadBrandingImage(file:File,kind:"logo"|"stamp"){
+  if(!profile)throw new Error("登录状态已失效。");
+  if(!["image/png","image/jpeg","image/webp"].includes(file.type))throw new Error("Logo/签章仅支持 PNG、JPG 或 WebP 图片。");
+  if(file.size>5*1024*1024)throw new Error("单张图片不能超过 5 MB。");
+  const ext=file.type==="image/jpeg"?"jpg":file.type==="image/webp"?"webp":"png";
+  const folder=profile.role==="admin"?"company":`factory/${profile.factory_id}`;
+  const path=`${folder}/${kind}-${Date.now()}.${ext}`;
+  const response=await fetch(API+"/storage/v1/object/crm-branding/"+path,{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+token,"Content-Type":file.type,"x-upsert":"false"},body:file});
+  if(!response.ok)throw new Error("图片上传失败："+await response.text());
+  return API+"/storage/v1/object/public/crm-branding/"+path;
+ }
+ async function saveBranding(e:React.FormEvent){
+  e.preventDefault();if(!profile)return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   const logo_url=brandingLogo?await uploadBrandingImage(brandingLogo,"logo"):brandingDraft.logo_url||null;
+   const stamp_url=brandingStamp?await uploadBrandingImage(brandingStamp,"stamp"):brandingDraft.stamp_url||null;
+   const scope=profile.role==="admin"?"company":"factory";
+   const payload={scope,factory_id:scope==="factory"?profile.factory_id:null,logo_url,stamp_url,legal_name:brandingDraft.legal_name.trim()||null,address:brandingDraft.address.trim()||null,telephone:brandingDraft.telephone.trim()||null,email:brandingDraft.email.trim()||null,website:brandingDraft.website.trim()||null,bank_name:brandingDraft.bank_name.trim()||null,bank_address:brandingDraft.bank_address.trim()||null,beneficiary:brandingDraft.beneficiary.trim()||null,account_number:brandingDraft.account_number.trim()||null,swift_code:brandingDraft.swift_code.trim()||null,updated_by:userId};
+   if(branding?.id)await req("crm_branding_settings?id=eq."+encodeURIComponent(branding.id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify(payload)});
+   else await req("crm_branding_settings",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify(payload)});
+   setNotice("Logo、签章与报价主体/银行资料已保存。");await loadBranding();
+  }catch(e){setError(e instanceof Error?e.message:"报价单品牌设置保存失败。");}
   finally{setBusy(false);}
  }
  async function createAccount(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");try{await adminAction("create_user",accountDraft);setAccountDraft({username:"",email:"",full_name:"",password:"",role:"sales",factory_id:""});setAccountOpen(false);setNotice("CRM 用户已创建，可以将账号和初始密码交付给对应人员。");await loadAccounts();}catch(e){setError(e instanceof Error?e.message:"账号创建失败。");}finally{setBusy(false);}}
@@ -442,7 +481,22 @@ function addQuoteLine(){
      </div>
     </div>}
 
-    {module==="branding"&&<div className={panel}><h2 className="text-xl font-black">报价单 Logo 与签章设置</h2><p className="mt-2 text-sm text-slate-500">公司级和工厂级 branding_settings 已建立。图片上传、公司/工厂资料编辑和 PDF 自动套用功能将在报价与单据模块接入时一并完成。</p></div>}
+    {module==="branding"&&<div className="space-y-4">
+      <div className={panel}><h2 className="text-xl font-black">报价单 Logo 与签章设置</h2><p className="mt-2 text-sm text-slate-500">{profile.role==="admin"?"维护公司级默认报价主体与银行信息。":"维护本工厂专属报价主体与 Logo/签章。" } 图片支持 PNG、JPG、WebP，单张不超过 5 MB。</p></div>
+      <form onSubmit={saveBranding} className={panel+" space-y-5"}>
+       <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border border-slate-200 p-4"><h3 className="font-bold">英文 Logo</h3>{brandingDraft.logo_url&&<img src={brandingDraft.logo_url} alt="Quotation logo" className="mt-3 max-h-24 max-w-full object-contain"/>}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>setBrandingLogo(e.target.files?.[0]||null)} className="mt-3 block w-full text-sm"/>{brandingLogo&&<p className="mt-2 text-xs text-slate-500">待上传：{brandingLogo.name}</p>}<button type="button" onClick={()=>{setBrandingDraft(v=>({...v,logo_url:""}));setBrandingLogo(null);}} className="mt-3 text-xs font-semibold text-red-700">清除已保存 Logo</button></div>
+        <div className="rounded-lg border border-slate-200 p-4"><h3 className="font-bold">英文签章</h3>{brandingDraft.stamp_url&&<img src={brandingDraft.stamp_url} alt="Company stamp" className="mt-3 max-h-24 max-w-full object-contain"/>}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>setBrandingStamp(e.target.files?.[0]||null)} className="mt-3 block w-full text-sm"/>{brandingStamp&&<p className="mt-2 text-xs text-slate-500">待上传：{brandingStamp.name}</p>}<button type="button" onClick={()=>{setBrandingDraft(v=>({...v,stamp_url:""}));setBrandingStamp(null);}} className="mt-3 text-xs font-semibold text-red-700">清除已保存签章</button></div>
+       </div>
+       <div><h3 className="font-bold">报价主体资料（英文）</h3><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {([["legal_name","英文公司法定名称"],["address","公司地址"],["telephone","电话"],["email","业务邮箱"],["website","公司网站"]] as [string,string][]).map(([k,l])=><label key={k} className="text-sm font-semibold">{l}<input value={(brandingDraft as Record<string,string>)[k]} onChange={e=>setBrandingDraft(v=>({...v,[k]:e.target.value}))} className={input+" mt-1.5"}/></label>)}
+       </div></div>
+       <div><h3 className="font-bold">银行收款信息</h3><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {([["bank_name","银行名称"],["bank_address","银行地址"],["beneficiary","收款人/受益人"],["account_number","银行账号"],["swift_code","SWIFT Code"]] as [string,string][]).map(([k,l])=><label key={k} className="text-sm font-semibold">{l}<input value={(brandingDraft as Record<string,string>)[k]} onChange={e=>setBrandingDraft(v=>({...v,[k]:e.target.value}))} className={input+" mt-1.5"}/></label>)}
+       </div></div>
+       <div className="flex flex-wrap items-center gap-3"><button disabled={busy} className={btn}>{busy?"正在保存…":"保存 Logo、签章与报价资料"}</button><button type="button" onClick={loadBranding} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm">重新加载</button>{branding?.updated_at&&<span className="text-xs text-slate-400">最近更新：{new Date(branding.updated_at).toLocaleString("zh-CN")}</span>}</div>
+      </form>
+     </div>}
 
     {module==="password"&&<form onSubmit={changePassword} className={panel+" max-w-xl"}><h2 className="text-xl font-black">修改登录密码</h2><label className="mt-5 block text-sm font-semibold">新密码<input required minLength={8} type="password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} className={input+" mt-1.5"}/></label><label className="mt-4 block text-sm font-semibold">确认新密码<input required minLength={8} type="password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} className={input+" mt-1.5"}/></label><button disabled={busy} className={btn+" mt-5"}>更新密码</button></form>}
     <div className="text-center text-xs text-slate-400">YOUJIU Trade CRM · Supabase authenticated · Role-based access control</div>
