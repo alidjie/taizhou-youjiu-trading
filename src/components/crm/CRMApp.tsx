@@ -641,14 +641,86 @@ function addQuoteLine(){
      </div>}
 
     {module==="products"&&<div className="space-y-4">
-     <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black">产品库 / 工厂报价维护</h2><p className="mt-1 text-sm text-slate-500">工厂仅能维护本厂产品；销售员只读产品信息；管理员可管理全部产品。</p></div>{profile.role!=="sales"&&<button onClick={()=>setProductOpen(!productOpen)} className={btn}>＋ 新增产品</button>}</div>
-     {productOpen&&<form onSubmit={saveProduct} className={panel}><h3 className="mb-4 font-bold">新增工厂产品</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      <label className="text-sm font-semibold">产品名称<input required className={input+" mt-1.5"} value={productDraft.name} onChange={e=>setProductDraft(v=>({...v,name:e.target.value}))}/></label><label className="text-sm font-semibold">ITEM 型号<input required className={input+" mt-1.5"} value={productDraft.model_code} onChange={e=>setProductDraft(v=>({...v,model_code:e.target.value}))}/></label><label className="text-sm font-semibold">产品分类<select className={input+" mt-1.5"} value={productDraft.category} onChange={e=>setProductDraft(v=>({...v,category:e.target.value}))}>{cats.map(c=><option key={c.value} value={c.value}>{c.label}</option>)}</select></label>{profile.role==="admin"&&<label className="text-sm font-semibold">所属工厂<select required className={input+" mt-1.5"} value={productDraft.factory_id} onChange={e=>setProductDraft(v=>({...v,factory_id:e.target.value}))}><option value="">请选择工厂</option>{factories.filter(f=>f.status==="active").map(f=><option key={f.id} value={f.id}>{f.name} ({f.factory_code})</option>)}</select></label>}
-      {([["skd_price_usd","SKD USD"],["skd_price_cny","SKD CNY"],["ckd_price_usd","CKD USD"],["ckd_price_cny","CKD CNY"],["packing_quantity_40hq","40HQ 装箱量"]] as const).map(([k,l])=><label key={k} className="text-sm font-semibold">{l}<input required type="number" min="0" step="0.01" className={input+" mt-1.5"} value={productDraft[k]} onChange={e=>setProductDraft(v=>({...v,[k]:e.target.value}))}/></label>)}
-     </div><div className="mt-4 flex gap-2"><button disabled={busy} className={btn}>保存产品草稿</button><button type="button" onClick={()=>setProductOpen(false)} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm">取消</button></div><p className="mt-3 text-xs text-slate-500">本页面先录入报价主数据；图片、详细规格、自定义属性及发布审核会在产品管理下一阶段接入。未配置完整公开资料的产品不会自动发布到网站。</p></form>}
-     <div className={panel}><div className="mb-4 flex gap-2"><input value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="按产品名称、型号或分类搜索" className={input+" max-w-sm"}/><button onClick={loadProducts} className="rounded-lg border border-slate-300 px-3 text-sm">刷新</button></div><div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["产品 / 型号","分类","SKD USD","SKD CNY","CKD USD","CKD CNY","40HQ","网站状态"].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead><tbody>{filteredProducts.map(p=>{const pr=productPrices.find(x=>x.product_id===p.id);return <tr key={p.id} className="border-t border-slate-100"><td className="px-3 py-3"><div className="font-bold">{p.name}</div><div className="text-xs text-slate-500">{p.model_code||p.slug}</div></td><td className="px-3 py-3">{cats.find(c=>c.value===p.category)?.label||p.category}</td><td className="px-3 py-3">{pr?.skd_price_usd==null?"—":cash(pr.skd_price_usd,"USD")}</td><td className="px-3 py-3">{pr?.skd_price_cny==null?"—":cash(pr.skd_price_cny,"CNY")}</td><td className="px-3 py-3">{pr?.ckd_price_usd==null?"—":cash(pr.ckd_price_usd,"USD")}</td><td className="px-3 py-3">{pr?.ckd_price_cny==null?"—":cash(pr.ckd_price_cny,"CNY")}</td><td className="px-3 py-3">{pr?.packing_quantity_40hq??"—"}</td><td className="px-3 py-3">{p.published?"已发布":"草稿"}</td></tr>})}{!filteredProducts.length&&<tr><td colSpan={8} className="px-3 py-10 text-center text-slate-400">{busy?"正在加载…":"暂无产品记录"}</td></tr>}</tbody></table></div></div>
+     <div className="flex flex-wrap items-center justify-between gap-3">
+      <div><h2 className="text-xl font-black">产品库 / 工厂报价维护</h2><p className="mt-1 text-sm text-slate-500">工厂仅维护本厂产品和价格；销售员只读产品库；管理员管理全部工厂产品。</p></div>
+      {profile.role!=="sales"&&<button onClick={resetProductDraft} className={btn}>＋ 新增产品</button>}
+     </div>
+     {profile.role!=="sales"&&<div className={panel}>
+      <div className="flex flex-wrap items-center justify-between gap-3"><div><h3 className="font-bold">产品自定义属性</h3><p className="mt-1 text-xs text-slate-500">支持单行文本、数值和下拉单选。属性按工厂隔离，并写入产品自定义属性字段。</p></div><button type="button" onClick={()=>setAttributeOpen(v=>!v)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">{attributeOpen?"收起":"＋ 管理属性字段"}</button></div>
+      {attributeOpen&&<form onSubmit={saveAttributeDefinition} className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+       {profile.role==="admin"&&<label className="text-sm">所属工厂<select required value={attributeDraft.factory_id} onChange={e=>setAttributeDraft(v=>({...v,factory_id:e.target.value}))} className={input+" mt-1"}><option value="">请选择工厂</option>{factories.filter(x=>x.status==="active").map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>}
+       <label className="text-sm">字段代码<input required value={attributeDraft.field_key} onChange={e=>setAttributeDraft(v=>({...v,field_key:e.target.value}))} placeholder="motor_power" className={input+" mt-1"}/></label>
+       <label className="text-sm">显示名称<input required value={attributeDraft.label} onChange={e=>setAttributeDraft(v=>({...v,label:e.target.value}))} placeholder="Motor Power" className={input+" mt-1"}/></label>
+       <label className="text-sm">字段类型<select value={attributeDraft.data_type} onChange={e=>setAttributeDraft(v=>({...v,data_type:e.target.value as "text"|"number"|"select"}))} className={input+" mt-1"}><option value="text">单行文本</option><option value="number">数值</option><option value="select">下拉单选</option></select></label>
+       {attributeDraft.data_type==="select"&&<label className="text-sm sm:col-span-2">可选项（英文逗号分隔）<input required value={attributeDraft.options} onChange={e=>setAttributeDraft(v=>({...v,options:e.target.value}))} placeholder="Lithium, Lead-acid" className={input+" mt-1"}/></label>}
+       <label className="flex items-center gap-2 self-end text-sm"><input type="checkbox" checked={attributeDraft.is_required} onChange={e=>setAttributeDraft(v=>({...v,is_required:e.target.checked}))}/>必填字段</label>
+       <div className="flex items-end"><button disabled={busy} className={btn}>保存属性定义</button></div>
+      </form>}
+      <div className="mt-3 flex flex-wrap gap-2">{attributeDefinitions.filter(x=>profile.role==="admin"||x.factory_id===profile.factory_id).map(x=><span key={x.id} className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-xs">{x.label} · {x.data_type}<button type="button" onClick={()=>void deleteAttributeDefinition(x)} className="font-bold text-red-700" aria-label={"删除"+x.label}>×</button></span>)}{!attributeDefinitions.length&&<span className="text-xs text-slate-400">尚未建立自定义属性字段</span>}</div>
+     </div>}
+     {productOpen&&<form onSubmit={saveProduct} className={panel+" space-y-5"}>
+      <div className="flex flex-wrap items-start justify-between gap-2"><div><h3 className="font-bold">{productDraft.id?"编辑产品":"新增工厂产品"}</h3><p className="mt-1 text-xs text-slate-500">内外部产品资料分开：SKD/CKD 成本价格只保存在 CRM 受权限保护的数据表。</p></div><button type="button" onClick={()=>setProductOpen(false)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">关闭</button></div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+       <label className="text-sm font-semibold">产品名称<input required className={input+" mt-1.5"} value={productDraft.name} onChange={e=>setProductDraft(v=>({...v,name:e.target.value}))}/></label>
+       <label className="text-sm font-semibold">ITEM 型号<input required className={input+" mt-1.5"} value={productDraft.model_code} onChange={e=>setProductDraft(v=>({...v,model_code:e.target.value}))}/></label>
+       <label className="text-sm font-semibold">产品分类<select className={input+" mt-1.5"} value={productDraft.category} onChange={e=>setProductDraft(v=>({...v,category:e.target.value}))}>{cats.map(x=><option key={x.value} value={x.value}>{x.label}</option>)}</select></label>
+       {profile.role==="admin"&&<label className="text-sm font-semibold">所属工厂<select required className={input+" mt-1.5"} value={productDraft.factory_id} onChange={e=>{setProductDraft(v=>({...v,factory_id:e.target.value}));setProductCustomAttributes({});}}><option value="">请选择工厂</option>{factories.filter(x=>x.status==="active").map(x=><option key={x.id} value={x.id}>{x.name} ({x.factory_code})</option>)}</select></label>}
+       <label className="text-sm font-semibold sm:col-span-2">简短介绍<input className={input+" mt-1.5"} value={productDraft.short_description} onChange={e=>setProductDraft(v=>({...v,short_description:e.target.value}))}/></label>
+       <label className="text-sm font-semibold sm:col-span-2 lg:col-span-3">产品详细介绍<textarea rows={3} className={input+" mt-1.5"} value={productDraft.description} onChange={e=>setProductDraft(v=>({...v,description:e.target.value}))}/></label>
+      </div>
+      <div className="border-t border-slate-200 pt-4">
+       <h4 className="font-bold">产品图片</h4>
+       {productDraft.hero_image&&<img src={productDraft.hero_image} alt="当前产品主图" className="mt-3 max-h-40 max-w-xs object-contain rounded border border-slate-200 bg-slate-50"/>}
+       <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <label className="text-sm">上传主图（JPG / PNG / WebP / AVIF，最大 12MB）<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" onChange={e=>setProductImage(e.target.files?.[0]||null)} className="mt-2 block w-full text-xs"/></label>
+        <label className="text-sm">主图 URL<input value={productDraft.hero_image} onChange={e=>setProductDraft(v=>({...v,hero_image:e.target.value}))} className={input+" mt-1"}/></label>
+        <label className="text-sm sm:col-span-2">图片集 URL（每行一张）<textarea rows={2} value={productDraft.gallery_text} onChange={e=>setProductDraft(v=>({...v,gallery_text:e.target.value}))} className={input+" mt-1"}/></label>
+       </div>
+       {productImage&&<p className="mt-2 text-xs text-emerald-700">待上传：{productImage.name}</p>}
+      </div>
+      <div className="border-t border-slate-200 pt-4">
+       <h4 className="font-bold">技术参数与卖点</h4>
+       <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <label className="text-sm">技术参数（每行：参数名: 参数值）<textarea rows={6} value={productDraft.specifications_text} onChange={e=>setProductDraft(v=>({...v,specifications_text:e.target.value}))} placeholder={"Motor Power: 1500W\nRated Voltage: 72V\nBattery: Lithium / Lead-acid"} className={input+" mt-1"}/></label>
+        <label className="text-sm">产品卖点（每行一项）<textarea rows={6} value={productDraft.features_text} onChange={e=>setProductDraft(v=>({...v,features_text:e.target.value}))} className={input+" mt-1"}/></label>
+        <label className="text-sm sm:col-span-2">证书 / 文件（只填写已核实资料，每行一项）<textarea rows={3} value={productDraft.certifications_text} onChange={e=>setProductDraft(v=>({...v,certifications_text:e.target.value}))} className={input+" mt-1"}/></label>
+       </div>
+      </div>
+      <div className="border-t border-slate-200 pt-4">
+       <h4 className="font-bold">工厂自定义规格字段</h4>
+       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {attributeDefinitions.filter(x=>x.factory_id===((profile.role==="factory"?profile.factory_id:productDraft.factory_id)||null)).map(def=><label key={def.id} className="text-sm">{def.label}{def.data_type==="select"?<select required={def.is_required} value={String(productCustomAttributes[def.field_key]??"")} onChange={e=>setProductCustomAttributes(v=>({...v,[def.field_key]:e.target.value}))} className={input+" mt-1"}><option value="">请选择</option>{def.options.map(opt=><option key={opt} value={opt}>{opt}</option>)}</select>:<input required={def.is_required} type={def.data_type==="number"?"number":"text"} value={String(productCustomAttributes[def.field_key]??"")} onChange={e=>setProductCustomAttributes(v=>({...v,[def.field_key]:e.target.value}))} className={input+" mt-1"}/>}</label>)}
+        {!attributeDefinitions.some(x=>x.factory_id===((profile.role==="factory"?profile.factory_id:productDraft.factory_id)||null))&&<p className="text-xs text-slate-400">该工厂尚未建立自定义字段，可在上方“管理属性字段”中增加。</p>}
+       </div>
+      </div>
+      <div className="border-t border-slate-200 pt-4">
+       <h4 className="font-bold">内部 SKD / CKD 价格</h4>
+       <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        {([["skd_price_usd","SKD USD"],["skd_price_cny","SKD CNY"],["ckd_price_usd","CKD USD"],["ckd_price_cny","CKD CNY"],["packing_quantity_40hq","40HQ 装箱量"]] as const).map(([key,label])=><label key={key} className="text-sm font-semibold">{label}<input type="number" min="0" step={key==="packing_quantity_40hq"?"1":"0.01"} className={input+" mt-1.5"} value={productDraft[key]} onChange={e=>setProductDraft(v=>({...v,[key]:e.target.value}))}/></label>)}
+       </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-4 border-t border-slate-200 pt-4">
+       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={productDraft.featured} onChange={e=>setProductDraft(v=>({...v,featured:e.target.checked}))}/>首页推荐标记</label>
+       <label className="flex items-center gap-2 text-sm">排序<input type="number" value={productDraft.sort_order} onChange={e=>setProductDraft(v=>({...v,sort_order:e.target.value}))} className="w-24 rounded border border-slate-300 px-2 py-1.5"/></label>
+       <span className="text-xs text-slate-500">新建产品默认为草稿，不自动发布到公开网站。</span>
+       <div className="ml-auto flex gap-2"><button type="button" onClick={resetProductDraft} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm">清空</button><button disabled={busy} className={btn}>{busy?"正在保存…":productDraft.id?"保存产品修改":"保存产品草稿"}</button></div>
+      </div>
+     </form>}
+     <div className={panel}>
+      <div className="mb-4 flex flex-wrap gap-2"><input value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="按产品名称、型号或分类搜索" className={input+" max-w-sm"}/><button onClick={loadProducts} className="rounded-lg border border-slate-300 px-3 text-sm">刷新</button><span className="self-center text-xs text-slate-400">共 {filteredProducts.length} 款产品</span></div>
+      <div className="overflow-x-auto"><table className="w-full min-w-[1100px] text-left text-sm">
+       <thead className="bg-slate-50 text-xs text-slate-500"><tr>{["产品 / 型号","分类","SKD USD","SKD CNY","CKD USD","CKD CNY","40HQ","网站状态","操作"].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead>
+       <tbody>{filteredProducts.map(p=>{const pr=productPrices.find(x=>x.product_id===p.id);return <tr key={p.id} className="border-t border-slate-100">
+        <td className="px-3 py-3"><div className="flex items-center gap-3"><div className="h-12 w-14 overflow-hidden rounded bg-slate-100">{(p.hero_image||p.image)&&<img src={p.hero_image||p.image||""} alt="" className="h-full w-full object-cover"/>}</div><div><div className="font-bold">{p.name}</div><div className="text-xs text-slate-500">{p.model_code||p.slug}</div><div className="text-xs text-slate-400">{p.short_description||""}</div></div></div></td>
+        <td className="px-3 py-3">{cats.find(x=>x.value===p.category)?.label||p.category}</td>
+        <td className="px-3 py-3">{pr?.skd_price_usd==null?"—":cash(pr.skd_price_usd,"USD")}</td><td className="px-3 py-3">{pr?.skd_price_cny==null?"—":cash(pr.skd_price_cny,"CNY")}</td><td className="px-3 py-3">{pr?.ckd_price_usd==null?"—":cash(pr.ckd_price_usd,"USD")}</td><td className="px-3 py-3">{pr?.ckd_price_cny==null?"—":cash(pr.ckd_price_cny,"CNY")}</td><td className="px-3 py-3">{pr?.packing_quantity_40hq??"—"}</td><td className="px-3 py-3">{p.published?"已发布":"草稿"}</td>
+        <td className="px-3 py-3">{profile.role!=="sales"?<div className="flex gap-2"><button type="button" onClick={()=>beginEditProduct(p)} className="font-bold text-sky-700">编辑</button><button type="button" onClick={()=>void deleteProduct(p)} className="font-bold text-red-700">删除</button></div>:<span className="text-xs text-slate-400">只读</span>}</td>
+       </tr>})}
+       {!filteredProducts.length&&<tr><td colSpan={9} className="px-3 py-10 text-center text-slate-400">{busy?"正在加载…":"暂无产品记录。管理员可先建立工厂档案，随后录入产品。"}</td></tr>}
+       </tbody>
+      </table></div>
+     </div>
     </div>}
-
     {module==="quotes"&&profile.role!=="factory"&&<div className="space-y-4">
      <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black">报价单管理</h2><p className="mt-1 text-sm text-slate-500">从客户档案和工厂产品价格创建 SKD / CKD、多币种报价。草稿保存后可检查并继续推进。</p></div><button onClick={()=>{setQuoteOpen(!quoteOpen);setQuoteItems([]);setError("");}} disabled={!customers.length||!products.length} className={btn}>＋ 新建报价</button></div>
      {quoteOpen&&<form onSubmit={saveQuote} className={panel+" space-y-4"}>
