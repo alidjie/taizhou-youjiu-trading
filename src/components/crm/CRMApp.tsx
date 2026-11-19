@@ -551,7 +551,7 @@ function addQuoteLine(){
         </tr>)}
         {!docItems.length&&<tr><td colSpan={10} className="px-3 py-6 text-center text-slate-400">该订单暂无产品明细。</td></tr>}
        </tbody></table></div></div>
-       <div><h4 className="font-bold">五、声明与签署</h4><textarea value={docDraft.declaration} onChange={e=>setDocDraft(v=>({...v,declaration:e.target.value}))} className={input+" mt-3 min-h-20 w-full"}/><div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">{selectedDoc.branding_snapshot?.logo_url&&<span>已套用 Logo</span>}{selectedDoc.branding_snapshot?.stamp_url&&<span>已套用签章</span>}{!selectedDoc.branding_snapshot?.logo_url&&!selectedDoc.branding_snapshot?.stamp_url&&<span>暂无品牌图片，将使用文字抬头和签署区域</span>}</div></div>
+       <div><h4 className="font-bold">五、声明与签署</h4><textarea value={docDraft.declaration} onChange={e=>setDocDraft(v=>({...v,declaration:e.target.value}))} className={input+" mt-3 min-h-20 w-full"}/><div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">{Boolean(selectedDoc.branding_snapshot?.logo_url)&&<span>已套用 Logo</span>}{Boolean(selectedDoc.branding_snapshot?.stamp_url)&&<span>已套用签章</span>}{!Boolean(selectedDoc.branding_snapshot?.logo_url)&&!Boolean(selectedDoc.branding_snapshot?.stamp_url)&&<span>暂无品牌图片，将使用文字抬头和签署区域</span>}</div></div>
        <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4"><button disabled={busy} className={btn}>保存单据</button><button type="button" disabled={busy} onClick={()=>void resetTradeDocument()} className="rounded-lg border border-amber-300 px-4 py-2.5 text-sm text-amber-800">按订单数据重置</button><button type="button" onClick={previewTradeDocument} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm">预览 / 打印 / 保存 PDF</button></div>
       </form>}
      </div>}
