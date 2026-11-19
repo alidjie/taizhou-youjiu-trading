@@ -55,6 +55,8 @@ export default function CRMApp(){
  const [newPassword,setNewPassword]=useState(""),[confirmPassword,setConfirmPassword]=useState("");
  const [quoteOriginalItemIds,setQuoteOriginalItemIds]=useState<string[]>([]),[quotePreviewHtml,setQuotePreviewHtml]=useState(""),[quotePreviewOpen,setQuotePreviewOpen]=useState(false),[quotePreviewZoom,setQuotePreviewZoom]=useState(100),[quotePreviewFullScreen,setQuotePreviewFullScreen]=useState(false);
  const quotePreviewFrame=useRef<HTMLIFrameElement|null>(null);
+ const [docPreviewOpen,setDocPreviewOpen]=useState(false),[docPreviewHtml,setDocPreviewHtml]=useState(""),[docPreviewZoom,setDocPreviewZoom]=useState(100),[docPreviewFullScreen,setDocPreviewFullScreen]=useState(false);
+ const docPreviewFrame=useRef<HTMLIFrameElement|null>(null);
 
  const req=useCallback(async<T,>(path:string,init:RequestInit={}):Promise<T>=>{
   if(!token)throw new Error("登录状态已失效，请重新登录。");
@@ -187,31 +189,32 @@ export default function CRMApp(){
  }
  function previewTradeDocument(){
   if(!selectedDoc)return;
-  const esc=(v:unknown)=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]||ch));
+  const esc=(v:unknown)=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]||ch));
+  const isPL=selectedDoc.document_type==="PL";
   const title=selectedDoc.document_type==="CI"?"COMMERCIAL INVOICE":selectedDoc.document_type==="PI"?"PROFORMA INVOICE":"PACKING LIST";
   const buyer=selectedDoc.buyer_snapshot||{},seller=selectedDoc.seller_snapshot||{},brand=selectedDoc.branding_snapshot||{},order=selectedDoc.order_snapshot||{};
   const logo=String(brand.logo_url||"");const stamp=String(brand.stamp_url||"");
-  const rows=docItems.map(item=>{
-   const x=item.item_fields||{};
-   return "<tr><td>"+esc(x.model_code)+"</td><td>"+esc(x.product_name)+"<br><small>"+esc(x.description)+"</small></td><td class='right'>"+esc(x.quantity)+" "+esc(x.unit||"PCS")+"</td><td class='right'>"+esc(x.unit_price)+"</td><td class='right'>"+esc(x.line_total)+"</td><td class='right'>"+esc(x.gross_weight)+"</td><td class='right'>"+esc(x.net_weight)+"</td></tr>";
-  }).join("");
   const buyerName=esc(buyer.company_name||buyer.company||"");
   const sellerName=esc(brand.legal_name||seller.company_name||"YOUJIU");
-  const terms=[["Incoterms",docDraft.incoterm],["Payment Terms",docDraft.payment_terms],["Country of Origin",docDraft.origin],["Loading Port",docDraft.loading_port],["Destination Port",docDraft.destination_port],["Container No.",docDraft.container_no],["Seal No.",docDraft.seal_no],["Shipping Date",docDraft.shipping_date],["Gross Weight",docDraft.gross_weight],["Net Weight",docDraft.net_weight],["Volume",docDraft.volume],["Packages",docDraft.package_count]];
-  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)} - ${esc(docDraft.document_no)}</title><style>
-  @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#17212b;font-size:11px}h1{font-size:22px;margin:0 0 6px;letter-spacing:.06em}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #263746;padding-bottom:12px;margin-bottom:18px}.top img{max-width:190px;max-height:65px;object-fit:contain}.muted{color:#637180}.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}.panel{border:1px solid #cbd5df;padding:10px;min-height:88px}.panel b{display:block;margin-bottom:6px;text-transform:uppercase;font-size:10px;color:#536273}.row{display:flex;justify-content:space-between;gap:20px;margin:4px 0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.field{border:1px solid #d5dde5;padding:7px;min-height:36px}.field b{display:block;color:#667482;font-size:9px;text-transform:uppercase;margin-bottom:3px}table{width:100%;border-collapse:collapse;margin-top:14px}th{background:#e9eef2;text-align:left;font-size:9px;text-transform:uppercase}td,th{border:1px solid #cbd5df;padding:7px;vertical-align:top}.right{text-align:right}.totals{text-align:right;margin-top:12px;font-size:13px;font-weight:bold}.declaration{margin-top:22px;border-top:1px solid #cbd5df;padding-top:12px;line-height:1.55}.signature{display:flex;justify-content:flex-end;margin-top:24px;min-height:105px}.signature img{max-height:85px;max-width:150px;object-fit:contain}.footer{border-top:1px solid #cbd5df;margin-top:25px;padding-top:8px;color:#657482;font-size:9px}@media print{button{display:none}}</style></head><body>
-   <div class="top"><div>${logo?'<img src="'+esc(logo)+'" alt="Logo">':'<strong>'+sellerName+'</strong>'}</div><div style="text-align:right"><h1>${esc(title)}</h1><div><b>Document No.:</b> ${esc(docDraft.document_no)}</div><div><b>Date:</b> ${esc(docDraft.document_date)}</div><div><b>Order No.:</b> ${esc(order.order_no||docDraft.contract_no)}</div></div></div>
-   <div class="meta"><div class="panel"><b>Seller / Exporter</b><strong>${sellerName}</strong><div>${esc(brand.address||seller.address)}</div><div>${esc(brand.telephone||seller.telephone)}</div><div>${esc(brand.email||seller.email)}</div></div><div class="panel"><b>Buyer / Importer</b><strong>${buyerName}</strong><div>${esc(buyer.contact_name)}</div><div>${esc(buyer.address)}</div><div>${esc(buyer.country)}</div><div>${esc(buyer.email)}</div></div></div>
-   <div class="grid">${terms.map(([k,v])=>'<div class="field"><b>'+esc(k)+'</b>'+esc(v)+'</div>').join("")}</div>
-   <table><thead><tr><th>Model</th><th>Description of Goods</th><th class="right">Quantity</th><th class="right">Unit Price</th><th class="right">Amount</th><th class="right">G.W.</th><th class="right">N.W.</th></tr></thead><tbody>${rows||'<tr><td colspan="7">No items</td></tr>'}</tbody></table>
-   <div class="totals">Total USD: ${esc(order.total_usd||"—")} &nbsp; | &nbsp; Total CNY: ${esc(order.total_cny||"—")}</div>
-   <div class="declaration"><b>Declaration / Remarks</b><p>${esc(docDraft.declaration)}</p><p>${esc(docDraft.remarks)}</p></div>
-   <div class="signature">${stamp?'<img src="'+esc(stamp)+'" alt="Stamp">':'<div>Authorized Signature / Company Stamp</div>'}</div>
-   <div class="footer">${sellerName} · ${esc(brand.website||seller.website)}</div>
-  </body></html>`;
-  const win=window.open("","_blank");
-  if(!win){setError("浏览器阻止了预览窗口，请允许该站点打开弹出窗口后重试。");return;}
-  win.document.open();win.document.write(html);win.document.close();win.focus();win.print();
+  const rows=docItems.map(item=>{
+   const x=item.item_fields||{};
+   if(isPL){
+    return "<tr><td>"+esc(docDraft.shipping_marks)+"</td><td>"+esc(x.model_code)+"</td><td>"+esc(x.product_name)+"<br><small>"+esc(x.description)+"</small></td><td class='right'>"+esc(x.quantity)+" "+esc(x.unit||"PCS")+"</td><td class='right'>"+esc(x.packing_quantity_40hq||"")+"</td><td class='right'>"+esc(x.gross_weight||docDraft.gross_weight)+"</td><td class='right'>"+esc(x.net_weight||docDraft.net_weight)+"</td><td class='right'>"+esc(x.volume||docDraft.volume)+"</td></tr>";
+   }
+   return "<tr><td>"+esc(x.model_code)+"</td><td>"+esc(x.product_name)+"<br><small>"+esc(x.description)+"</small></td><td class='right'>"+esc(x.quantity)+" "+esc(x.unit||"PCS")+"</td><td class='right'>"+esc(x.unit_price)+"</td><td class='right'>"+esc(x.line_total)+"</td></tr>";
+  }).join("");
+  const termFields=[["Incoterms",docDraft.incoterm],["Payment Terms",docDraft.payment_terms],["Country of Origin",docDraft.origin],["Loading Port",docDraft.loading_port],["Destination Port",docDraft.destination_port],["Shipping Date",docDraft.shipping_date]];
+  const shipFields=[["Shipping Marks",docDraft.shipping_marks],["Container No.",docDraft.container_no],["Seal No.",docDraft.seal_no],["Packages",docDraft.package_count],["Gross Weight (KGS)",docDraft.gross_weight],["Net Weight (KGS)",docDraft.net_weight],["Volume (CBM)",docDraft.volume]];
+  const header="<div class='top'><div>"+(logo?"<img src='"+esc(logo)+"' alt='Logo'>":"<strong>"+sellerName+"</strong>")+"</div><div class='right'><h1>"+title+"</h1><div><b>Document No.:</b> "+esc(docDraft.document_no)+"</div><div><b>Date:</b> "+esc(docDraft.document_date)+"</div><div><b>Order No.:</b> "+esc(order.order_no||docDraft.contract_no)+"</div></div></div>";
+  const parties="<div class='meta'><div class='panel'><b>Seller / Exporter</b><strong>"+sellerName+"</strong><div>"+esc(brand.address||seller.address)+"</div><div>"+esc(brand.telephone||seller.telephone)+"</div><div>"+esc(brand.email||seller.email)+"</div></div><div class='panel'><b>Buyer / Importer</b><strong>"+buyerName+"</strong><div>"+esc(buyer.contact_name)+"</div><div>"+esc(buyer.address)+"</div><div>"+esc(buyer.country)+"</div><div>"+esc(buyer.email)+"</div></div></div>";
+  const fields= (isPL?shipFields:termFields).map(([k,v])=>"<div class='field'><b>"+esc(k)+"</b>"+esc(v||"—")+"</div>").join("");
+  const tableHeader=isPL
+   ? "<tr><th>Shipping Marks</th><th>Model</th><th>Description of Goods</th><th class='right'>Quantity</th><th class='right'>Packing / 40HQ</th><th class='right'>G.W.</th><th class='right'>N.W.</th><th class='right'>CBM</th></tr>"
+   : "<tr><th>Model</th><th>Description of Goods</th><th class='right'>Quantity</th><th class='right'>Unit Price</th><th class='right'>Amount</th></tr>";
+  const bank=!isPL?"<div class='bank'><b>BANKING DETAILS</b><br>Bank Name: "+esc(brand.bank_name||seller.bank_name)+"<br>Bank Address: "+esc(brand.bank_address||seller.bank_address)+"<br>Beneficiary: "+esc(brand.beneficiary||seller.beneficiary)+"<br>Account No.: "+esc(brand.account_number||seller.account_number)+"<br>SWIFT: "+esc(brand.swift_code||seller.swift_code)+"</div>":"";
+  const totals=!isPL?"<div class='totals'>Total USD: "+esc(order.total_usd||"—")+" &nbsp; | &nbsp; Total CNY: "+esc(order.total_cny||"—")+"</div>":"";
+  const html="<!doctype html><html><head><meta charset='utf-8'><title>"+title+" - "+esc(docDraft.document_no)+"</title><style>@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#17212b;font-size:10px;line-height:1.45}h1{font-size:22px;margin:0 0 6px;letter-spacing:.06em}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #263746;padding-bottom:12px;margin-bottom:18px}.top img{max-width:190px;max-height:65px;object-fit:contain}.right{text-align:right}.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}.panel{border:1px solid #cbd5df;padding:10px;min-height:82px}.panel b{display:block;margin-bottom:6px;text-transform:uppercase;font-size:9px;color:#536273}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.field{border:1px solid #d5dde5;padding:7px;min-height:36px}.field b{display:block;color:#667482;font-size:8px;text-transform:uppercase;margin-bottom:3px}table{width:100%;border-collapse:collapse;margin-top:14px}th{background:#e9eef2;text-align:left;font-size:8px;text-transform:uppercase}td,th{border:1px solid #cbd5df;padding:6px;vertical-align:top}.totals{text-align:right;margin-top:12px;font-size:12px;font-weight:bold}.bank{margin-top:14px;border:1px solid #cbd5df;padding:10px;line-height:1.6}.declaration{margin-top:20px;border-top:1px solid #cbd5df;padding-top:12px;line-height:1.55}.signature{display:flex;justify-content:flex-end;margin-top:24px;min-height:95px}.signature img{max-height:85px;max-width:150px;object-fit:contain}.footer{border-top:1px solid #cbd5df;margin-top:20px;padding-top:8px;color:#657482;font-size:8px}</style></head><body>"+header+parties+"<div class='grid'>"+fields+"</div><table><thead>"+tableHeader+"</thead><tbody>"+(rows||"<tr><td colspan='"+(isPL?8:5)+"'>No items</td></tr>")+"</tbody></table>"+totals+bank+"<div class='declaration'><b>Declaration / Remarks</b><p>"+esc(docDraft.declaration)+"</p><p>"+esc(docDraft.remarks)+"</p></div><div class='signature'>"+(stamp?"<img src='"+esc(stamp)+"' alt='Company Stamp'>":"<span>Authorized Signature / Company Stamp</span>")+"</div><div class='footer'>"+sellerName+" · "+esc(brand.website||seller.website)+"</div></body></html>";
+  setDocPreviewHtml(html);setDocPreviewZoom(100);setDocPreviewFullScreen(false);setDocPreviewOpen(true);
  }
  const loadBranding=useCallback(async()=>{
    if(!profile)return;
@@ -925,6 +928,25 @@ function addQuoteLine(){
        <div><h4 className="font-bold">五、声明与签署</h4><textarea value={docDraft.declaration} onChange={e=>setDocDraft(v=>({...v,declaration:e.target.value}))} className={input+" mt-3 min-h-20 w-full"}/><div className="mt-2 flex flex-wrap gap-4 text-xs text-slate-500">{Boolean(selectedDoc.branding_snapshot?.logo_url)&&<span>已套用 Logo</span>}{Boolean(selectedDoc.branding_snapshot?.stamp_url)&&<span>已套用签章</span>}{!Boolean(selectedDoc.branding_snapshot?.logo_url)&&!Boolean(selectedDoc.branding_snapshot?.stamp_url)&&<span>暂无品牌图片，将使用文字抬头和签署区域</span>}</div></div>
        <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-4"><button disabled={busy} className={btn}>保存单据</button><button type="button" disabled={busy} onClick={()=>void resetTradeDocument()} className="rounded-lg border border-amber-300 px-4 py-2.5 text-sm text-amber-800">按订单数据重置</button><button type="button" onClick={previewTradeDocument} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm">预览 / 打印 / 保存 PDF</button></div>
       </form>}
+      {docPreviewOpen&&<div className="fixed inset-0 z-[75] bg-slate-950/75 p-2 sm:p-5" role="dialog" aria-modal="true" aria-label="外贸单据预览">
+       <div className={"mx-auto flex h-full flex-col overflow-hidden rounded-xl bg-white shadow-2xl "+(docPreviewFullScreen?"w-full":"max-w-6xl")}>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 px-3 py-3 sm:px-5">
+         <div><div className="font-bold">{selectedDoc?.document_type==="CI"?"Commercial Invoice":selectedDoc?.document_type==="PI"?"Proforma Invoice":"Packing List"}</div><div className="text-xs text-slate-500">{selectedDoc?.document_no||""} · 缩放 {docPreviewZoom}%</div></div>
+         <div className="flex flex-wrap items-center gap-2"><label className="flex items-center gap-2 text-xs">缩放<input type="range" min="50" max="300" step="5" value={docPreviewZoom} onChange={e=>setDocPreviewZoom(Number(e.target.value))} className="w-28"/></label>
+          <button type="button" onClick={()=>setDocPreviewZoom(100)} className="rounded border px-2 py-1.5 text-xs">实际大小</button>
+          <button type="button" onClick={()=>setDocPreviewZoom(75)} className="rounded border px-2 py-1.5 text-xs">适合宽度</button>
+          <button type="button" onClick={()=>setDocPreviewFullScreen(v=>!v)} className="rounded border px-2 py-1.5 text-xs">{docPreviewFullScreen?"退出全屏":"全屏"}</button>
+          <button type="button" onClick={()=>docPreviewFrame.current?.contentWindow?.print()} className="rounded bg-slate-900 px-3 py-1.5 text-xs font-bold text-white">打印 / 保存 PDF</button>
+          <button type="button" onClick={()=>setDocPreviewOpen(false)} className="rounded border px-3 py-1.5 text-xs">关闭</button>
+         </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-auto bg-slate-200 p-2 sm:p-4">
+         <div className="mx-auto bg-white shadow-lg" style={{width:(10000/docPreviewZoom)+"%",height:"calc(100vh - 145px)",transform:"scale("+(docPreviewZoom/100)+")",transformOrigin:"top left"}}>
+          <iframe ref={docPreviewFrame} title="Trade document preview" srcDoc={docPreviewHtml} className="h-full w-full border-0 bg-white"/>
+         </div>
+        </div>
+       </div>
+      </div>}
      </div>}
 
     {module==="accounts"&&profile.role==="admin"&&<div className="space-y-4">
