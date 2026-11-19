@@ -40,7 +40,7 @@ export default function CRMApp(){
  const [module,setModule]=useState<Module>("dashboard"),[drawer,setDrawer]=useState(false);
  const [customers,setCustomers]=useState<Customer[]>([]),[search,setSearch]=useState(""),[statusFilter,setStatusFilter]=useState("all");
  const [selected,setSelected]=useState<Customer|null>(null),[followups,setFollowups]=useState<Followup[]>([]);
- const [customerOpen,setCustomerOpen]=useState(false),[customerDraft,setCustomerDraft]=useState({company_name:"",contact_name:"",email:"",phone:"",whatsapp:"",website:"",address:"",country:"",city:"",notes:"",tags:""}),[customerEditOpen,setCustomerEditOpen]=useState(false),[customerEditDraft,setCustomerEditDraft]=useState({company_name:"",contact_name:"",email:"",phone:"",whatsapp:"",website:"",address:"",country:"",city:"",notes:"",tags:""}),[relatedQuotes,setRelatedQuotes]=useState<Quote[]>([]),[relatedOrders,setRelatedOrders]=useState<Order[]>([]);
+ const [customerOpen,setCustomerOpen]=useState(false),[customerDraft,setCustomerDraft]=useState({company_name:"",contact_name:"",email:"",phone:"",whatsapp:"",website:"",address:"",country:"",city:"",notes:"",tags:""}),[customerEditOpen,setCustomerEditOpen]=useState(false),[customerEditDraft,setCustomerEditDraft]=useState({company_name:"",contact_name:"",email:"",phone:"",whatsapp:"",website:"",address:"",country:"",city:"",notes:"",tags:""}),[relatedQuotes,setRelatedQuotes]=useState<Quote[]>([]),[relatedOrders,setRelatedOrders]=useState<Order[]>([]),[relatedEmailLogs,setRelatedEmailLogs]=useState<QuoteEmailLog[]>([]);
  const [followupDraft,setFollowupDraft]=useState({method:"email",summary:"",next_followup_at:""});
  const [products,setProducts]=useState<Product[]>([]),[productPrices,setProductPrices]=useState<ProductPrice[]>([]),[factories,setFactories]=useState<Factory[]>([]),[attributeDefinitions,setAttributeDefinitions]=useState<AttributeDefinition[]>([]),[productSearch,setProductSearch]=useState(""),[productOpen,setProductOpen]=useState(false),[productImage,setProductImage]=useState<File|null>(null);
  const [productDraft,setProductDraft]=useState({id:"",name:"",model_code:"",category:"electric-motorcycles",factory_id:"",short_description:"",description:"",hero_image:"",gallery_text:"",specifications_text:"",features_text:"",certifications_text:"",featured:false,sort_order:"0",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
@@ -276,14 +276,15 @@ export default function CRMApp(){
  async function saveCustomer(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");try{await req("crm_customers",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({...customerDraft,owner_id:userId,status:"prospect",email:customerDraft.email.trim()||null,phone:customerDraft.phone.trim()||null,whatsapp:customerDraft.whatsapp.trim()||null,city:customerDraft.city.trim()||null,notes:customerDraft.notes.trim()||null,tags:customerDraft.tags.split(",").map(x=>x.trim()).filter(Boolean)})});setCustomerDraft({company_name:"",contact_name:"",email:"",phone:"",whatsapp:"",website:"",address:"",country:"",city:"",notes:"",tags:""});setCustomerOpen(false);setNotice("客户档案已保存。");await loadCustomers();await loadDashboard();}catch(e){setError(e instanceof Error?e.message:"保存客户失败。");}finally{setBusy(false);}}
  async function updateCustomer(patch:Partial<Customer>){if(!selected)return;setBusy(true);try{await req("crm_customers?id=eq."+encodeURIComponent(selected.id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify(patch)});setSelected({...selected,...patch});setNotice("客户信息已更新。");await loadCustomers();}catch(e){setError(e instanceof Error?e.message:"更新失败。");}finally{setBusy(false);}}
  async function openCustomer(row:Customer){
-   setSelected(row);setCustomerEditOpen(false);setFollowups([]);setRelatedQuotes([]);setRelatedOrders([]);
+   setSelected(row);setCustomerEditOpen(false);setFollowups([]);setRelatedQuotes([]);setRelatedOrders([]);setRelatedEmailLogs([]);
    try{
-    const [followupRows,quoteRows,orderRows]=await Promise.all([
+    const [followupRows,quoteRows,orderRows,emailRows]=await Promise.all([
      req<Followup[]>("crm_customer_followups?select=*&customer_id=eq."+encodeURIComponent(row.id)+"&order=followed_at.desc&limit=200"),
      req<Quote[]>("crm_quotes?select=id,quote_no,status,total_usd,total_cny,created_at&customer_id=eq."+encodeURIComponent(row.id)+"&order=created_at.desc&limit=200"),
-     req<Order[]>("crm_orders?select=id,order_no,customer_id,status,total_usd,total_cny,order_date,expected_delivery_date,actual_delivery_date,delivery_progress,buyer_snapshot&customer_id=eq."+encodeURIComponent(row.id)+"&order=order_date.desc&limit=200")
+     req<Order[]>("crm_orders?select=id,order_no,customer_id,status,total_usd,total_cny,order_date,expected_delivery_date,actual_delivery_date,delivery_progress,buyer_snapshot&customer_id=eq."+encodeURIComponent(row.id)+"&order=order_date.desc&limit=200"),
+     req<QuoteEmailLog[]>("crm_quote_email_logs?select=id,recipient,subject,method,sent_at,body,metadata&customer_id=eq."+encodeURIComponent(row.id)+"&order=sent_at.desc&limit=200")
     ]);
-    setFollowups(followupRows);setRelatedQuotes(quoteRows);setRelatedOrders(orderRows);
+    setFollowups(followupRows);setRelatedQuotes(quoteRows);setRelatedOrders(orderRows);setRelatedEmailLogs(emailRows);
    }catch(e){setError(e instanceof Error?e.message:"客户关联记录加载失败。");}
   }
  async function addFollowup(e:React.FormEvent){e.preventDefault();if(!selected)return;setBusy(true);try{await req("crm_customer_followups",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({customer_id:selected.id,created_by:userId,method:followupDraft.method,summary:followupDraft.summary,followed_at:new Date().toISOString(),next_followup_at:followupDraft.next_followup_at?new Date(followupDraft.next_followup_at).toISOString():null})});await updateCustomer({last_contacted_at:new Date().toISOString(),next_followup_at:followupDraft.next_followup_at?new Date(followupDraft.next_followup_at).toISOString():null});setFollowupDraft({method:"email",summary:"",next_followup_at:""});await openCustomer(selected);setNotice("跟进记录已添加。");}catch(e){setError(e instanceof Error?e.message:"添加跟进记录失败。");}finally{setBusy(false);}}
@@ -701,7 +702,17 @@ function addQuoteLine(){
         <div><h4 className="font-bold">关联报价单</h4><div className="mt-3 space-y-2">{relatedQuotes.map(q=><div key={q.id} className="flex flex-wrap justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm"><span className="font-semibold">{q.quote_no} · {labels[q.status]||q.status}</span><span>{cash(q.total_usd,"USD")} / {cash(q.total_cny,"CNY")}</span></div>)}{!relatedQuotes.length&&<p className="text-sm text-slate-400">暂无关联报价。</p>}</div></div>
         <div><h4 className="font-bold">关联订单</h4><div className="mt-3 space-y-2">{relatedOrders.map(o=><div key={o.id} className="flex flex-wrap justify-between gap-2 rounded-lg border border-slate-200 p-3 text-sm"><span className="font-semibold">{o.order_no} · {labels[o.status]||o.status}</span><span>{cash(o.total_usd,"USD")} / {cash(o.total_cny,"CNY")}</span></div>)}{!relatedOrders.length&&<p className="text-sm text-slate-400">暂无关联订单。</p>}</div></div>
        </div>
-
+       <div className="mt-6">
+        <h4 className="font-bold">客户报价邮件记录</h4>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+         {relatedEmailLogs.map(log=><div key={log.id} className="rounded-lg border border-slate-200 p-3 text-sm">
+          <div className="font-semibold">{log.subject||"Quotation email"}</div>
+          <div className="mt-1 text-xs text-slate-500">{log.recipient} · {log.method} · {log.sent_at?new Date(log.sent_at).toLocaleString("zh-CN"):""}</div>
+          <p className="mt-2 text-xs text-amber-700">CRM 记录的是邮件草稿/操作；除非邮件服务返回确认，不代表已发送或已送达。</p>
+         </div>)}
+         {!relatedEmailLogs.length&&<p className="text-sm text-slate-400">暂无客户邮件记录。</p>}
+        </div>
+       </div>
       </div>}
      </div>}
 
