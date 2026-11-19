@@ -14,6 +14,7 @@ type Product = { id:string; slug:string; name:string; model_code:string|null; ca
 type ProductPrice = { product_id:string; factory_id:string; skd_price_usd:number|null; skd_price_cny:number|null; ckd_price_usd:number|null; ckd_price_cny:number|null; packing_quantity_40hq:number|null };
 type Factory = { id:string; factory_code:string; name:string; status:string };
 type Quote = { id:string; quote_no:string; status:string; total_usd:number; total_cny:number; created_at:string };
+type QuoteLineDraft = { id:string; product_id:string; price_basis:string; quantity:string };
 type Order = { id:string; order_no:string; status:string; total_usd:number; total_cny:number; order_date:string; expected_delivery_date:string|null };
 type Doc = { id:string; document_type:string; document_no:string; status:string; document_date:string; order_id:string };
 type Perf = { sales_user_id:string; username:string; full_name:string; order_total_usd:number; order_total_cny:number; order_count:number; customer_count:number; won_customer_count:number; conversion_rate:number };
@@ -39,7 +40,7 @@ export default function CRMApp(){
  const [productDraft,setProductDraft]=useState({name:"",model_code:"",category:"electric-motorcycles",factory_id:"",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
  const [factoryOpen,setFactoryOpen]=useState(false),[factoryDraft,setFactoryDraft]=useState({factory_code:"",name:"",contact_name:"",email:"",phone:"",address:""});
  const [accountOpen,setAccountOpen]=useState(false),[accountDraft,setAccountDraft]=useState({username:"",email:"",full_name:"",password:"",role:"sales",factory_id:""});
- const [quotes,setQuotes]=useState<Quote[]>([]),[orders,setOrders]=useState<Order[]>([]),[docs,setDocs]=useState<Doc[]>([]),[accounts,setAccounts]=useState<Profile[]>([]);
+ const [quotes,setQuotes]=useState<Quote[]>([]),[quoteOpen,setQuoteOpen]=useState(false),[quoteCustomerId,setQuoteCustomerId]=useState(""),[quoteValidUntil,setQuoteValidUntil]=useState(""),[quoteIncoterm,setQuoteIncoterm]=useState("FOB"),[quoteLoadingPort,setQuoteLoadingPort]=useState(""),[quoteDestinationPort,setQuoteDestinationPort]=useState(""),[quotePaymentTerms,setQuotePaymentTerms]=useState(""),[quoteDeliveryTerms,setQuoteDeliveryTerms]=useState(""),[quoteRemarks,setQuoteRemarks]=useState(""),[quoteItems,setQuoteItems]=useState<QuoteLineDraft[]>([]),[quoteLineDraft,setQuoteLineDraft]=useState({product_id:"",price_basis:"SKD_USD",quantity:"1"}),[orders,setOrders]=useState<Order[]>([]),[docs,setDocs]=useState<Doc[]>([]),[accounts,setAccounts]=useState<Profile[]>([]);
  const [perf,setPerf]=useState<Perf[]>([]),[kpis,setKpis]=useState({customers:0,won:0,usd:0,cny:0,orders:0});
  const [newPassword,setNewPassword]=useState(""),[confirmPassword,setConfirmPassword]=useState("");
 
@@ -85,7 +86,7 @@ export default function CRMApp(){
  const loadOrders=useCallback(async()=>{try{setOrders(await req<Order[]>("crm_orders?select=id,order_no,status,total_usd,total_cny,order_date,expected_delivery_date&order=order_date.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"订单加载失败。");}},[req]);
  const loadDocs=useCallback(async()=>{try{setDocs(await req<Doc[]>("crm_trade_documents?select=id,document_type,document_no,status,document_date,order_id&order=document_date.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"单据加载失败。");}},[req]);
  const loadAccounts=useCallback(async()=>{try{const [rows,fs]=await Promise.all([req<Profile[]>("crm_user_profiles?select=user_id,username,email,full_name,role,factory_id,is_active&order=created_at.desc"),req<Factory[]>("crm_factories?select=id,factory_code,name,status&order=name")]);setAccounts(rows);setFactories(fs);}catch(e){setError(e instanceof Error?e.message:"账号加载失败。");}},[req]);
- useEffect(()=>{if(!profile)return;if(module==="dashboard")void loadDashboard();if(module==="customers")void loadCustomers();if(module==="products")void loadProducts();if(module==="quotes")void loadQuotes();if(module==="orders")void loadOrders();if(module==="documents")void loadDocs();if(module==="accounts"&&profile.role==="admin")void loadAccounts();},[module,profile,loadDashboard,loadCustomers,loadProducts,loadQuotes,loadOrders,loadDocs,loadAccounts]);
+ useEffect(()=>{if(!profile)return;if(module==="dashboard")void loadDashboard();if(module==="customers")void loadCustomers();if(module==="products")void loadProducts();if(module==="quotes"){void loadQuotes();void loadCustomers();void loadProducts();}if(module==="orders")void loadOrders();if(module==="documents")void loadDocs();if(module==="accounts"&&profile.role==="admin")void loadAccounts();},[module,profile,loadDashboard,loadCustomers,loadProducts,loadQuotes,loadOrders,loadDocs,loadAccounts]);
 
  async function saveCustomer(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");try{await req("crm_customers",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({...customerDraft,owner_id:userId,status:"prospect",email:customerDraft.email.trim()||null,phone:customerDraft.phone.trim()||null,whatsapp:customerDraft.whatsapp.trim()||null,city:customerDraft.city.trim()||null,notes:customerDraft.notes.trim()||null,tags:customerDraft.tags.split(",").map(x=>x.trim()).filter(Boolean)})});setCustomerDraft({company_name:"",contact_name:"",email:"",phone:"",whatsapp:"",country:"",city:"",notes:"",tags:""});setCustomerOpen(false);setNotice("客户档案已保存。");await loadCustomers();await loadDashboard();}catch(e){setError(e instanceof Error?e.message:"保存客户失败。");}finally{setBusy(false);}}
  async function updateCustomer(patch:Partial<Customer>){if(!selected)return;setBusy(true);try{await req("crm_customers?id=eq."+encodeURIComponent(selected.id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify(patch)});setSelected({...selected,...patch});setNotice("客户信息已更新。");await loadCustomers();}catch(e){setError(e instanceof Error?e.message:"更新失败。");}finally{setBusy(false);}}
@@ -95,6 +96,50 @@ export default function CRMApp(){
  async function createFactory(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");try{await req("crm_factories",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({...factoryDraft,status:"active"})});setFactoryDraft({factory_code:"",name:"",contact_name:"",email:"",phone:"",address:""});setFactoryOpen(false);setNotice("工厂档案已创建。现在可以为工厂分配账号并录入产品。");await loadProducts();}catch(e){setError(e instanceof Error?e.message:"工厂创建失败。");}finally{setBusy(false);}}
  async function adminAction(action:string,payload:Record<string,unknown>){const response=await fetch(API+"/functions/v1/crm-admin",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+token,"Content-Type":"application/json"},body:JSON.stringify({action,...payload})});const data=await response.json() as {success?:boolean;data?:unknown;error?:string};if(!response.ok||!data.success)throw new Error(data.error||"管理员操作失败。");return data.data;}
  async function createAccount(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");try{await adminAction("create_user",accountDraft);setAccountDraft({username:"",email:"",full_name:"",password:"",role:"sales",factory_id:""});setAccountOpen(false);setNotice("CRM 用户已创建，可以将账号和初始密码交付给对应人员。");await loadAccounts();}catch(e){setError(e instanceof Error?e.message:"账号创建失败。");}finally{setBusy(false);}}
+ async function saveQuote(e:React.FormEvent){
+  e.preventDefault();setBusy(true);setError("");setNotice("");
+  try{
+    const selectedCustomer=customers.find(x=>x.id===quoteCustomerId);
+    if(!selectedCustomer) throw new Error("请先选择客户。");
+    if(!quoteItems.length) throw new Error("报价至少需要一条产品明细。");
+    const linesForRpc=quoteItems.map(line=>({product_id:line.product_id,price_basis:line.price_basis,quantity:Number(line.quantity)}));
+    const result=await req<{id:string;quote_no:string}>("rpc/crm_create_quote",{
+      method:"POST",
+      body:JSON.stringify({p_quote:{
+        customer_id:quoteCustomerId,valid_until:quoteValidUntil||null,incoterm:quoteIncoterm,
+        loading_port:quoteLoadingPort,destination_port:quoteDestinationPort,
+        payment_terms:quotePaymentTerms,delivery_terms:quoteDeliveryTerms,remarks:quoteRemarks,
+        seller_snapshot:{company_name:"YOUJIU",website:"https://www.almcp.com"}
+      },p_items:linesForRpc})
+    });
+    setQuoteOpen(false);setQuoteItems([]);setQuoteCustomerId("");setQuoteValidUntil("");
+    setQuoteLoadingPort("");setQuoteDestinationPort("");setQuotePaymentTerms("");setQuoteDeliveryTerms("");setQuoteRemarks("");
+    setNotice("报价单 "+result.quote_no+" 已保存为草稿。请检查后再发送给客户。");
+    await loadQuotes();
+  }catch(e){setError(e instanceof Error?e.message:"报价保存失败。");}
+  finally{setBusy(false);}
+}
+async function convertQuote(id:string){
+  setBusy(true);setError("");setNotice("");
+  try{
+    const orderId=await req<string>("rpc/crm_convert_quote_to_order",{method:"POST",body:JSON.stringify({p_quote_id:id})});
+    setNotice("报价已成功转为订单。订单 ID："+String(orderId));
+    await Promise.all([loadQuotes(),loadOrders()]);
+  }catch(e){setError(e instanceof Error?e.message:"报价转订单失败。");}
+  finally{setBusy(false);}
+}
+function addQuoteLine(){
+  const product=products.find(p=>p.id===quoteLineDraft.product_id);
+  const price=productPrices.find(p=>p.product_id===quoteLineDraft.product_id);
+  if(!product||!price){setError("请选择已配置工厂价格的产品。");return;}
+  const amount=price[quoteLineDraft.price_basis as keyof ProductPrice];
+  if(amount===null||amount===undefined){setError("该产品未设置所选 SKD/CKD 价格。");return;}
+  if(Number(quoteLineDraft.quantity)<=0){setError("数量必须大于零。");return;}
+  setError("");
+  setQuoteItems(v=>[...v,{id:crypto.randomUUID(),...quoteLineDraft}]);
+  setQuoteLineDraft(v=>({...v,product_id:""}));
+}
+
  async function changePassword(e:React.FormEvent){e.preventDefault();setError("");setNotice("");if(newPassword.length<8){setError("新密码至少需要 8 位。");return;}if(newPassword!==confirmPassword){setError("两次输入的新密码不一致。");return;}setBusy(true);try{const r=await fetch(API+"/auth/v1/user",{method:"PUT",headers:hdr(token),body:JSON.stringify({password:newPassword})});if(!r.ok)throw new Error(await r.text());setNewPassword("");setConfirmPassword("");setNotice("登录密码已修改。");}catch(e){setError(e instanceof Error?e.message:"密码修改失败。");}finally{setBusy(false);}}
 
  const filteredCustomers=useMemo(()=>customers.filter(c=>(statusFilter==="all"||c.status===statusFilter)&&(!search||[c.company_name,c.contact_name,c.email||"",c.country].join(" ").toLowerCase().includes(search.toLowerCase()))),[customers,statusFilter,search]);
