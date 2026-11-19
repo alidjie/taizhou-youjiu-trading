@@ -18,7 +18,8 @@ type QuoteLineDraft = { id:string; product_id:string; price_basis:string; quanti
 type Order = { id:string; order_no:string; customer_id:string; status:string; total_usd:number; total_cny:number; order_date:string; expected_delivery_date:string|null; actual_delivery_date:string|null; delivery_progress:string|null; buyer_snapshot:{company_name?:string;contact_name?:string;country?:string} };
 type OrderUpdate = { id:string; order_id:string; status:string|null; progress_description:string; expected_delivery_date:string|null; actual_delivery_date:string|null; created_at:string };
 type Branding = { id:string; scope:"company"|"factory"; factory_id:string|null; logo_url:string|null; stamp_url:string|null; legal_name:string|null; address:string|null; telephone:string|null; email:string|null; website:string|null; bank_name:string|null; bank_address:string|null; beneficiary:string|null; account_number:string|null; swift_code:string|null; additional_bank_details:Record<string,unknown>; updated_at?:string };
-type Doc = { id:string; document_type:string; document_no:string; status:string; document_date:string; order_id:string };
+type Doc = { id:string; document_type:string; document_no:string; status:string; document_date:string; order_id:string; header_fields:Record<string,unknown>; terms_fields:Record<string,unknown>; shipping_fields:Record<string,unknown>; declaration_fields:Record<string,unknown>; buyer_snapshot:Record<string,unknown>; seller_snapshot:Record<string,unknown>; order_snapshot:Record<string,unknown>; branding_snapshot:Record<string,unknown> };
+type DocItem = { id:string; document_id:string; line_no:number; item_fields:Record<string,unknown> };
 type Perf = { sales_user_id:string; username:string; full_name:string; order_total_usd:number; order_total_cny:number; order_count:number; customer_count:number; won_customer_count:number; conversion_rate:number };
 type Module = "dashboard"|"customers"|"products"|"quotes"|"orders"|"documents"|"accounts"|"branding"|"password";
 const labels:Record<string,string> = { prospect:"潜在客户",following:"跟进中",won:"已成交",lost:"已流失",draft:"草稿",sent:"已发送",accepted:"已接受",rejected:"已拒绝",expired:"已过期",converted:"已转订单",quoted:"已报价",ordered:"已下单",production:"生产中",shipped:"已发货",completed:"已完成",cancelled:"已取消",final:"已确认" };
@@ -43,7 +44,7 @@ export default function CRMApp(){
  const [factoryOpen,setFactoryOpen]=useState(false),[factoryDraft,setFactoryDraft]=useState({factory_code:"",name:"",contact_name:"",email:"",phone:"",address:""});
  const [accountOpen,setAccountOpen]=useState(false),[accountDraft,setAccountDraft]=useState({username:"",email:"",full_name:"",password:"",role:"sales",factory_id:""});
  const [accountSearch,setAccountSearch]=useState(""),[accountRoleFilter,setAccountRoleFilter]=useState("all"),[editingAccount,setEditingAccount]=useState<Profile|null>(null),[editAccountDraft,setEditAccountDraft]=useState({username:"",email:"",full_name:"",role:"sales",factory_id:""});
- const [quotes,setQuotes]=useState<Quote[]>([]),[quoteOpen,setQuoteOpen]=useState(false),[quoteCustomerId,setQuoteCustomerId]=useState(""),[quoteValidUntil,setQuoteValidUntil]=useState(""),[quoteIncoterm,setQuoteIncoterm]=useState("FOB"),[quoteLoadingPort,setQuoteLoadingPort]=useState(""),[quoteDestinationPort,setQuoteDestinationPort]=useState(""),[quotePaymentTerms,setQuotePaymentTerms]=useState(""),[quoteDeliveryTerms,setQuoteDeliveryTerms]=useState(""),[quoteRemarks,setQuoteRemarks]=useState(""),[quoteItems,setQuoteItems]=useState<QuoteLineDraft[]>([]),[quoteLineDraft,setQuoteLineDraft]=useState({product_id:"",price_basis:"SKD_USD",quantity:"1"}),[orders,setOrders]=useState<Order[]>([]),[selectedOrder,setSelectedOrder]=useState<Order|null>(null),[orderUpdates,setOrderUpdates]=useState<OrderUpdate[]>([]),[orderDraft,setOrderDraft]=useState({status:"ordered",progress_description:"",expected_delivery_date:"",actual_delivery_date:""}),[docs,setDocs]=useState<Doc[]>([]),[accounts,setAccounts]=useState<Profile[]>([]);
+ const [quotes,setQuotes]=useState<Quote[]>([]),[quoteOpen,setQuoteOpen]=useState(false),[quoteCustomerId,setQuoteCustomerId]=useState(""),[quoteValidUntil,setQuoteValidUntil]=useState(""),[quoteIncoterm,setQuoteIncoterm]=useState("FOB"),[quoteLoadingPort,setQuoteLoadingPort]=useState(""),[quoteDestinationPort,setQuoteDestinationPort]=useState(""),[quotePaymentTerms,setQuotePaymentTerms]=useState(""),[quoteDeliveryTerms,setQuoteDeliveryTerms]=useState(""),[quoteRemarks,setQuoteRemarks]=useState(""),[quoteItems,setQuoteItems]=useState<QuoteLineDraft[]>([]),[quoteLineDraft,setQuoteLineDraft]=useState({product_id:"",price_basis:"SKD_USD",quantity:"1"}),[orders,setOrders]=useState<Order[]>([]),[selectedOrder,setSelectedOrder]=useState<Order|null>(null),[orderUpdates,setOrderUpdates]=useState<OrderUpdate[]>([]),[orderDraft,setOrderDraft]=useState({status:"ordered",progress_description:"",expected_delivery_date:"",actual_delivery_date:""}),[docs,setDocs]=useState<Doc[]>([]),[selectedDoc,setSelectedDoc]=useState<Doc|null>(null),[docItems,setDocItems]=useState<DocItem[]>([]),[docOrderId,setDocOrderId]=useState(""),[docDraft,setDocDraft]=useState({document_no:"",document_date:"",contract_no:"",shipping_marks:"",incoterm:"",payment_terms:"",origin:"China",remarks:"",loading_port:"",destination_port:"",container_no:"",seal_no:"",shipping_date:"",gross_weight:"",net_weight:"",volume:"",package_count:"",declaration:""}),[accounts,setAccounts]=useState<Profile[]>([]);
  const [perf,setPerf]=useState<Perf[]>([]),[kpis,setKpis]=useState({customers:0,won:0,usd:0,cny:0,orders:0});
   const [branding,setBranding]=useState<Branding|null>(null),[brandingDraft,setBrandingDraft]=useState({legal_name:"",address:"",telephone:"",email:"",website:"",bank_name:"",bank_address:"",beneficiary:"",account_number:"",swift_code:"",logo_url:"",stamp_url:""}),[brandingLogo,setBrandingLogo]=useState<File|null>(null),[brandingStamp,setBrandingStamp]=useState<File|null>(null);
  const [newPassword,setNewPassword]=useState(""),[confirmPassword,setConfirmPassword]=useState("");
@@ -111,7 +112,100 @@ export default function CRMApp(){
    }catch(e){setError(e instanceof Error?e.message:"订单进度保存失败。");}
    finally{setBusy(false);}
   }
-  const loadDocs=useCallback(async()=>{try{setDocs(await req<Doc[]>("crm_trade_documents?select=id,document_type,document_no,status,document_date,order_id&order=document_date.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"单据加载失败。");}},[req]);
+  const loadDocs=useCallback(async()=>{try{setDocs(await req<Doc[]>("crm_trade_documents?select=*&order=document_date.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"单据加载失败。");}},[req]);
+ async function openTradeDocument(doc:Doc){
+  setSelectedDoc(doc);
+  const h=doc.header_fields||{},t=doc.terms_fields||{},sh=doc.shipping_fields||{},de=doc.declaration_fields||{};
+  const get=(o:Record<string,unknown>,k:string)=>String(o[k]??"");
+  setDocDraft({
+   document_no:doc.document_no,document_date:doc.document_date,
+   contract_no:get(h,"contract_no")||get(h,"order_no"),shipping_marks:get(h,"shipping_marks"),
+   incoterm:get(t,"incoterm"),payment_terms:get(t,"payment_terms"),origin:get(t,"origin")||"China",remarks:get(t,"remarks"),
+   loading_port:get(sh,"loading_port"),destination_port:get(sh,"destination_port"),container_no:get(sh,"container_no"),seal_no:get(sh,"seal_no"),shipping_date:get(sh,"shipping_date"),
+   gross_weight:get(sh,"gross_weight"),net_weight:get(sh,"net_weight"),volume:get(sh,"volume"),package_count:get(sh,"package_count"),declaration:get(de,"declaration")
+  });
+  try{setDocItems(await req<DocItem[]>("crm_trade_document_items?select=id,document_id,line_no,item_fields&document_id=eq."+encodeURIComponent(doc.id)+"&order=line_no.asc&limit=500"));}
+  catch(e){setError(e instanceof Error?e.message:"单据明细加载失败。");}
+ }
+ async function createTradeDocument(type:"CI"|"PI"|"PL"){
+  if(!docOrderId){setError("请先选择一张订单。");return;}
+  setBusy(true);setError("");setNotice("");
+  try{
+   const result=await req<{id:string;document_no:string;existing:boolean}>("rpc/crm_create_trade_document",{method:"POST",body:JSON.stringify({p_order_id:docOrderId,p_document_type:type})});
+   const rows=await req<Doc[]>("crm_trade_documents?select=*&id=eq."+encodeURIComponent(result.id)+"&limit=1");
+   if(rows[0])await openTradeDocument(rows[0]);
+   await loadDocs();
+   setNotice(result.existing?"该订单已有此类单据，已打开原单据。":"已从订单生成 "+type+" 单据："+result.document_no);
+  }catch(e){setError(e instanceof Error?e.message:"生成外贸单据失败。");}
+  finally{setBusy(false);}
+ }
+ function updateDocItem(itemId:string,key:string,value:string){
+  setDocItems(rows=>rows.map(row=>{
+   if(row.id!==itemId)return row;
+   const fields={...row.item_fields,[key]:["quantity","unit_price","line_total","packing_quantity_40hq"].includes(key)?(value===""?null:Number(value)):value};
+   if(key==="quantity"||key==="unit_price")fields.line_total=Number(fields.quantity||0)*Number(fields.unit_price||0);
+   return {...row,item_fields:fields};
+  }));
+ }
+ async function saveTradeDocument(e:React.FormEvent){
+  e.preventDefault();if(!selectedDoc)return;
+  if(!docDraft.document_no.trim()){setError("单据编号不能为空。");return;}
+  setBusy(true);setError("");setNotice("");
+  try{
+   const payload={
+    document_no:docDraft.document_no.trim(),document_date:docDraft.document_date,
+    header_fields:{contract_no:docDraft.contract_no,order_no:String(selectedDoc.order_snapshot.order_no||""),shipping_marks:docDraft.shipping_marks},
+    terms_fields:{incoterm:docDraft.incoterm,payment_terms:docDraft.payment_terms,origin:docDraft.origin,remarks:docDraft.remarks},
+    shipping_fields:{loading_port:docDraft.loading_port,destination_port:docDraft.destination_port,container_no:docDraft.container_no,seal_no:docDraft.seal_no,shipping_date:docDraft.shipping_date,gross_weight:docDraft.gross_weight,net_weight:docDraft.net_weight,volume:docDraft.volume,package_count:docDraft.package_count},
+    declaration_fields:{declaration:docDraft.declaration}
+   };
+   await req("crm_trade_documents?id=eq."+encodeURIComponent(selectedDoc.id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify(payload)});
+   await Promise.all(docItems.map(item=>req("crm_trade_document_items?id=eq."+encodeURIComponent(item.id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({item_fields:item.item_fields})})));
+   const rows=await req<Doc[]>("crm_trade_documents?select=*&id=eq."+encodeURIComponent(selectedDoc.id)+"&limit=1");
+   if(rows[0])await openTradeDocument(rows[0]);
+   await loadDocs();setNotice("单据内容与产品明细已保存。");
+  }catch(e){setError(e instanceof Error?e.message:"单据保存失败。请检查编号是否重复。");}
+  finally{setBusy(false);}
+ }
+ async function resetTradeDocument(){
+  if(!selectedDoc||!window.confirm("确定按订单当前数据重置？所有手工修改的单据字段和产品明细都会被覆盖。"))return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   await req("rpc/crm_reset_trade_document",{method:"POST",body:JSON.stringify({p_document_id:selectedDoc.id})});
+   const rows=await req<Doc[]>("crm_trade_documents?select=*&id=eq."+encodeURIComponent(selectedDoc.id)+"&limit=1");
+   if(rows[0])await openTradeDocument(rows[0]);
+   await loadDocs();setNotice("已按订单数据重置单据。");
+  }catch(e){setError(e instanceof Error?e.message:"单据重置失败。");}
+  finally{setBusy(false);}
+ }
+ function previewTradeDocument(){
+  if(!selectedDoc)return;
+  const esc=(v:unknown)=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch]||ch));
+  const title=selectedDoc.document_type==="CI"?"COMMERCIAL INVOICE":selectedDoc.document_type==="PI"?"PROFORMA INVOICE":"PACKING LIST";
+  const buyer=selectedDoc.buyer_snapshot||{},seller=selectedDoc.seller_snapshot||{},brand=selectedDoc.branding_snapshot||{},order=selectedDoc.order_snapshot||{};
+  const logo=String(brand.logo_url||"");const stamp=String(brand.stamp_url||"");
+  const rows=docItems.map(item=>{
+   const x=item.item_fields||{};
+   return "<tr><td>"+esc(x.model_code)+"</td><td>"+esc(x.product_name)+"<br><small>"+esc(x.description)+"</small></td><td class='right'>"+esc(x.quantity)+" "+esc(x.unit||"PCS")+"</td><td class='right'>"+esc(x.unit_price)+"</td><td class='right'>"+esc(x.line_total)+"</td><td class='right'>"+esc(x.gross_weight)+"</td><td class='right'>"+esc(x.net_weight)+"</td></tr>";
+  }).join("");
+  const buyerName=esc(buyer.company_name||buyer.company||"");
+  const sellerName=esc(brand.legal_name||seller.company_name||"YOUJIU");
+  const terms=[["Incoterms",docDraft.incoterm],["Payment Terms",docDraft.payment_terms],["Country of Origin",docDraft.origin],["Loading Port",docDraft.loading_port],["Destination Port",docDraft.destination_port],["Container No.",docDraft.container_no],["Seal No.",docDraft.seal_no],["Shipping Date",docDraft.shipping_date],["Gross Weight",docDraft.gross_weight],["Net Weight",docDraft.net_weight],["Volume",docDraft.volume],["Packages",docDraft.package_count]];
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)} - ${esc(docDraft.document_no)}</title><style>
+  @page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#17212b;font-size:11px}h1{font-size:22px;margin:0 0 6px;letter-spacing:.06em}.top{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #263746;padding-bottom:12px;margin-bottom:18px}.top img{max-width:190px;max-height:65px;object-fit:contain}.muted{color:#637180}.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}.panel{border:1px solid #cbd5df;padding:10px;min-height:88px}.panel b{display:block;margin-bottom:6px;text-transform:uppercase;font-size:10px;color:#536273}.row{display:flex;justify-content:space-between;gap:20px;margin:4px 0}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:14px 0}.field{border:1px solid #d5dde5;padding:7px;min-height:36px}.field b{display:block;color:#667482;font-size:9px;text-transform:uppercase;margin-bottom:3px}table{width:100%;border-collapse:collapse;margin-top:14px}th{background:#e9eef2;text-align:left;font-size:9px;text-transform:uppercase}td,th{border:1px solid #cbd5df;padding:7px;vertical-align:top}.right{text-align:right}.totals{text-align:right;margin-top:12px;font-size:13px;font-weight:bold}.declaration{margin-top:22px;border-top:1px solid #cbd5df;padding-top:12px;line-height:1.55}.signature{display:flex;justify-content:flex-end;margin-top:24px;min-height:105px}.signature img{max-height:85px;max-width:150px;object-fit:contain}.footer{border-top:1px solid #cbd5df;margin-top:25px;padding-top:8px;color:#657482;font-size:9px}@media print{button{display:none}}</style></head><body>
+   <div class="top"><div>${logo?'<img src="'+esc(logo)+'" alt="Logo">':'<strong>'+sellerName+'</strong>'}</div><div style="text-align:right"><h1>${esc(title)}</h1><div><b>Document No.:</b> ${esc(docDraft.document_no)}</div><div><b>Date:</b> ${esc(docDraft.document_date)}</div><div><b>Order No.:</b> ${esc(order.order_no||docDraft.contract_no)}</div></div></div>
+   <div class="meta"><div class="panel"><b>Seller / Exporter</b><strong>${sellerName}</strong><div>${esc(brand.address||seller.address)}</div><div>${esc(brand.telephone||seller.telephone)}</div><div>${esc(brand.email||seller.email)}</div></div><div class="panel"><b>Buyer / Importer</b><strong>${buyerName}</strong><div>${esc(buyer.contact_name)}</div><div>${esc(buyer.address)}</div><div>${esc(buyer.country)}</div><div>${esc(buyer.email)}</div></div></div>
+   <div class="grid">${terms.map(([k,v])=>'<div class="field"><b>'+esc(k)+'</b>'+esc(v)+'</div>').join("")}</div>
+   <table><thead><tr><th>Model</th><th>Description of Goods</th><th class="right">Quantity</th><th class="right">Unit Price</th><th class="right">Amount</th><th class="right">G.W.</th><th class="right">N.W.</th></tr></thead><tbody>${rows||'<tr><td colspan="7">No items</td></tr>'}</tbody></table>
+   <div class="totals">Total USD: ${esc(order.total_usd||"—")} &nbsp; | &nbsp; Total CNY: ${esc(order.total_cny||"—")}</div>
+   <div class="declaration"><b>Declaration / Remarks</b><p>${esc(docDraft.declaration)}</p><p>${esc(docDraft.remarks)}</p></div>
+   <div class="signature">${stamp?'<img src="'+esc(stamp)+'" alt="Stamp">':'<div>Authorized Signature / Company Stamp</div>'}</div>
+   <div class="footer">${sellerName} · ${esc(brand.website||seller.website)}</div>
+  </body></html>`;
+  const win=window.open("","_blank");
+  if(!win){setError("浏览器阻止了预览窗口，请允许该站点打开弹出窗口后重试。");return;}
+  win.document.open();win.document.write(html);win.document.close();win.focus();win.print();
+ }
  const loadBranding=useCallback(async()=>{
    if(!profile)return;
    try{
@@ -125,7 +219,7 @@ export default function CRMApp(){
    }catch(e){setError(e instanceof Error?e.message:"报价单品牌设置加载失败。");}
   },[profile,req]);
  const loadAccounts=useCallback(async()=>{try{const [rows,fs]=await Promise.all([req<Profile[]>("crm_user_profiles?select=user_id,username,email,full_name,role,factory_id,is_active,created_at&order=created_at.desc"),req<Factory[]>("crm_factories?select=id,factory_code,name,status&order=name")]);setAccounts(rows);setFactories(fs);}catch(e){setError(e instanceof Error?e.message:"账号加载失败。");}},[req]);
- useEffect(()=>{if(!profile)return;if(module==="dashboard")void loadDashboard();if(module==="customers")void loadCustomers();if(module==="products")void loadProducts();if(module==="quotes"){void loadQuotes();void loadCustomers();void loadProducts();}if(module==="orders")void loadOrders();if(module==="documents")void loadDocs();if(module==="accounts"&&profile.role==="admin")void loadAccounts();if(module==="branding")void loadBranding();},[module,profile,loadDashboard,loadCustomers,loadProducts,loadQuotes,loadOrders,loadDocs,loadAccounts,loadBranding]);
+ useEffect(()=>{if(!profile)return;if(module==="dashboard")void loadDashboard();if(module==="customers")void loadCustomers();if(module==="products")void loadProducts();if(module==="quotes"){void loadQuotes();void loadCustomers();void loadProducts();}if(module==="orders")void loadOrders();if(module==="documents"){void loadDocs();void loadOrders();}if(module==="accounts"&&profile.role==="admin")void loadAccounts();if(module==="branding")void loadBranding();},[module,profile,loadDashboard,loadCustomers,loadProducts,loadQuotes,loadOrders,loadDocs,loadAccounts,loadBranding]);
 
  function beginEditCustomer(c:Customer){
   setCustomerEditDraft({company_name:c.company_name,contact_name:c.contact_name,email:c.email||"",phone:c.phone||"",whatsapp:c.whatsapp||"",website:c.website||"",address:c.address||"",country:c.country,city:c.city||"",notes:c.notes||"",tags:(c.tags||[]).join(", ")});
