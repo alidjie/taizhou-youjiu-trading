@@ -49,7 +49,7 @@ export default function CRMApp(){
  const [factoryOpen,setFactoryOpen]=useState(false),[factoryDraft,setFactoryDraft]=useState({factory_code:"",name:"",contact_name:"",email:"",phone:"",address:""});
  const [accountOpen,setAccountOpen]=useState(false),[accountDraft,setAccountDraft]=useState({username:"",email:"",full_name:"",password:"",role:"sales",factory_id:""});
  const [accountSearch,setAccountSearch]=useState(""),[accountRoleFilter,setAccountRoleFilter]=useState("all"),[editingAccount,setEditingAccount]=useState<Profile|null>(null),[editAccountDraft,setEditAccountDraft]=useState({username:"",email:"",full_name:"",role:"sales",factory_id:""});
- const [quotes,setQuotes]=useState<Quote[]>([]),[selectedQuote,setSelectedQuote]=useState<Quote|null>(null),[quoteDetailItems,setQuoteDetailItems]=useState<QuoteItem[]>([]),[quoteEmailLogs,setQuoteEmailLogs]=useState<QuoteEmailLog[]>([]),[quoteEditDraft,setQuoteEditDraft]=useState({valid_until:"",incoterm:"FOB",loading_port:"",destination_port:"",payment_terms:"",delivery_terms:"",packaging_terms:"",warranty_terms:"",remarks:""}),[quoteOpen,setQuoteOpen]=useState(false),[quoteCustomerId,setQuoteCustomerId]=useState(""),[quoteValidUntil,setQuoteValidUntil]=useState(""),[quoteIncoterm,setQuoteIncoterm]=useState("FOB"),[quoteLoadingPort,setQuoteLoadingPort]=useState(""),[quoteDestinationPort,setQuoteDestinationPort]=useState(""),[quotePaymentTerms,setQuotePaymentTerms]=useState(""),[quoteDeliveryTerms,setQuoteDeliveryTerms]=useState(""),[quoteRemarks,setQuoteRemarks]=useState(""),[quoteItems,setQuoteItems]=useState<QuoteLineDraft[]>([]),[quoteLineDraft,setQuoteLineDraft]=useState({product_id:"",price_basis:"SKD_USD",quantity:"1"}),[orders,setOrders]=useState<Order[]>([]),[selectedOrder,setSelectedOrder]=useState<Order|null>(null),[orderUpdates,setOrderUpdates]=useState<OrderUpdate[]>([]),[orderDraft,setOrderDraft]=useState({status:"ordered",progress_description:"",expected_delivery_date:"",actual_delivery_date:""}),[docs,setDocs]=useState<Doc[]>([]),[selectedDoc,setSelectedDoc]=useState<Doc|null>(null),[docItems,setDocItems]=useState<DocItem[]>([]),[docOrderId,setDocOrderId]=useState(""),[docDraft,setDocDraft]=useState({document_no:"",document_date:"",contract_no:"",shipping_marks:"",incoterm:"",payment_terms:"",origin:"China",remarks:"",loading_port:"",destination_port:"",container_no:"",seal_no:"",shipping_date:"",gross_weight:"",net_weight:"",volume:"",package_count:"",declaration:""}),[accounts,setAccounts]=useState<Profile[]>([]);
+ const [quotes,setQuotes]=useState<Quote[]>([]),[selectedQuote,setSelectedQuote]=useState<Quote|null>(null),[quoteDetailItems,setQuoteDetailItems]=useState<QuoteItem[]>([]),[quoteEmailLogs,setQuoteEmailLogs]=useState<QuoteEmailLog[]>([]),[quoteEditDraft,setQuoteEditDraft]=useState({valid_until:"",incoterm:"FOB",loading_port:"",destination_port:"",payment_terms:"",delivery_terms:"",packaging_terms:"",warranty_terms:"",remarks:""}),[quoteOpen,setQuoteOpen]=useState(false),[quoteCustomerId,setQuoteCustomerId]=useState(""),[quoteValidUntil,setQuoteValidUntil]=useState(""),[quoteIncoterm,setQuoteIncoterm]=useState("FOB"),[quoteLoadingPort,setQuoteLoadingPort]=useState(""),[quoteDestinationPort,setQuoteDestinationPort]=useState(""),[quotePaymentTerms,setQuotePaymentTerms]=useState(""),[quoteDeliveryTerms,setQuoteDeliveryTerms]=useState(""),[quotePackagingTerms,setQuotePackagingTerms]=useState(""),[quoteWarrantyTerms,setQuoteWarrantyTerms]=useState(""),[quoteRemarks,setQuoteRemarks]=useState(""),[quoteItems,setQuoteItems]=useState<QuoteLineDraft[]>([]),[quoteLineDraft,setQuoteLineDraft]=useState({product_id:"",price_basis:"SKD_USD",quantity:"1"}),[orders,setOrders]=useState<Order[]>([]),[selectedOrder,setSelectedOrder]=useState<Order|null>(null),[orderUpdates,setOrderUpdates]=useState<OrderUpdate[]>([]),[orderDraft,setOrderDraft]=useState({status:"ordered",progress_description:"",expected_delivery_date:"",actual_delivery_date:""}),[docs,setDocs]=useState<Doc[]>([]),[selectedDoc,setSelectedDoc]=useState<Doc|null>(null),[docItems,setDocItems]=useState<DocItem[]>([]),[docOrderId,setDocOrderId]=useState(""),[docDraft,setDocDraft]=useState({document_no:"",document_date:"",contract_no:"",shipping_marks:"",incoterm:"",payment_terms:"",origin:"China",remarks:"",loading_port:"",destination_port:"",container_no:"",seal_no:"",shipping_date:"",gross_weight:"",net_weight:"",volume:"",package_count:"",declaration:""}),[accounts,setAccounts]=useState<Profile[]>([]);
  const [perf,setPerf]=useState<Perf[]>([]),[kpis,setKpis]=useState({customers:0,won:0,conversion:0,usd:0,cny:0,orders:0});
   const [branding,setBranding]=useState<Branding|null>(null),[brandingDraft,setBrandingDraft]=useState({legal_name:"",address:"",telephone:"",email:"",website:"",bank_name:"",bank_address:"",beneficiary:"",account_number:"",swift_code:"",logo_url:"",stamp_url:""}),[brandingLogo,setBrandingLogo]=useState<File|null>(null),[brandingStamp,setBrandingStamp]=useState<File|null>(null);
  const [newPassword,setNewPassword]=useState(""),[confirmPassword,setConfirmPassword]=useState("");
@@ -459,12 +459,12 @@ export default function CRMApp(){
       body:JSON.stringify({p_quote:{
         customer_id:quoteCustomerId,valid_until:quoteValidUntil||null,incoterm:quoteIncoterm,
         loading_port:quoteLoadingPort,destination_port:quoteDestinationPort,
-        payment_terms:quotePaymentTerms,delivery_terms:quoteDeliveryTerms,remarks:quoteRemarks,
+        payment_terms:quotePaymentTerms,delivery_terms:quoteDeliveryTerms,packaging_terms:quotePackagingTerms,warranty_terms:quoteWarrantyTerms,remarks:quoteRemarks,
         seller_snapshot:sellerSnapshot,branding_snapshot:quoteBrand||{}
       },p_items:linesForRpc})
     });
     setQuoteOpen(false);setQuoteItems([]);setQuoteCustomerId("");setQuoteValidUntil("");
-    setQuoteLoadingPort("");setQuoteDestinationPort("");setQuotePaymentTerms("");setQuoteDeliveryTerms("");setQuoteRemarks("");
+    setQuoteLoadingPort("");setQuoteDestinationPort("");setQuotePaymentTerms("");setQuoteDeliveryTerms("");setQuotePackagingTerms("");setQuoteWarrantyTerms("");setQuoteRemarks("");
     setNotice("报价单 "+result.quote_no+" 已保存为草稿。请检查后再发送给客户。");
     await loadQuotes();
   }catch(e){setError(e instanceof Error?e.message:"报价保存失败。");}
@@ -481,8 +481,14 @@ async function openQuote(quote:Quote){
     setQuoteDetailItems(items);setQuoteOriginalItemIds(items.map(x=>x.id));setQuoteEmailLogs(logs);
    }catch(e){setError(e instanceof Error?e.message:"报价明细或邮件记录加载失败。");}
   }
-  function updateQuoteDetailLine(id:string,key:"quantity"|"unit_price",value:string){
-   setQuoteDetailItems(rows=>rows.map(row=>row.id===id?{...row,[key]:value===""?0:Number(value),line_total:(key==="quantity"?Number(value):Number(row.quantity))*(key==="unit_price"?Number(value):Number(row.unit_price))}:row));
+  function updateQuoteDetailLine(id:string,key:"quantity"|"unit_price"|"packing_quantity",value:string){
+   setQuoteDetailItems(rows=>rows.map(row=>{
+    if(row.id!==id)return row;
+    if(key==="packing_quantity")return {...row,packing_quantity:value===""?null:Number(value)};
+    const updated={...row,[key]:value===""?0:Number(value)};
+    updated.line_total=Number(updated.quantity)*Number(updated.unit_price);
+    return updated;
+   }));
   }
   function addQuoteDetailLine(){
    if(!selectedQuote)return;
@@ -523,7 +529,7 @@ async function openQuote(quote:Quote){
     }
     for(let i=0;i<quoteDetailItems.length;i++){
      const item=quoteDetailItems[i];
-     const payload={line_no:i+1,product_name:item.product_name,description:item.description,quantity:Number(item.quantity),unit_price:Number(item.unit_price),line_total:Number(item.quantity)*Number(item.unit_price)};
+     const payload={line_no:i+1,product_name:item.product_name,description:item.description,quantity:Number(item.quantity),unit_price:Number(item.unit_price),packing_quantity:item.packing_quantity,line_total:Number(item.quantity)*Number(item.unit_price)};
      if(item.id.startsWith("new-")){
       await req("crm_quote_items",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({
        quote_id:selectedQuote.id,product_id:item.product_id,factory_id:item.factory_id,...payload,
@@ -791,6 +797,8 @@ function addQuoteLine(){
        <label className="text-sm font-semibold">目的港<input value={quoteDestinationPort} onChange={e=>setQuoteDestinationPort(e.target.value)} placeholder="e.g. Karachi, Pakistan" className={input+" mt-1.5"}/></label>
        <label className="text-sm font-semibold">付款条件<input value={quotePaymentTerms} onChange={e=>setQuotePaymentTerms(e.target.value)} placeholder="e.g. 30% T/T deposit, balance before shipment" className={input+" mt-1.5"}/></label>
        <label className="text-sm font-semibold">交货条件<input value={quoteDeliveryTerms} onChange={e=>setQuoteDeliveryTerms(e.target.value)} className={input+" mt-1.5"}/></label>
+       <label className="text-sm font-semibold">包装条款<input value={quotePackagingTerms} onChange={e=>setQuotePackagingTerms(e.target.value)} placeholder="e.g. SKD in plywood cartons" className={input+" mt-1.5"}/></label>
+       <label className="text-sm font-semibold">质保条款<input value={quoteWarrantyTerms} onChange={e=>setQuoteWarrantyTerms(e.target.value)} placeholder="e.g. 12 months against manufacturing defects" className={input+" mt-1.5"}/></label>
        <label className="text-sm font-semibold sm:col-span-2">备注<textarea value={quoteRemarks} onChange={e=>setQuoteRemarks(e.target.value)} className={input+" mt-1.5 min-h-16"}/></label>
       </div>
       <div className="border-t border-slate-200 pt-4"><h4 className="font-bold">产品明细</h4><div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -828,7 +836,7 @@ function addQuoteLine(){
         <div className="flex items-end"><button type="button" onClick={addQuoteDetailLine} className="w-full rounded-lg border border-emerald-700 px-3 py-2.5 text-sm font-bold text-emerald-800">添加产品</button></div>
        </div>
        <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[1050px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["型号","产品名称","报价方式","数量","单价","小计","40HQ装箱量","操作"].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead><tbody>
-        {quoteDetailItems.map(item=><tr key={item.id} className="border-t border-slate-100"><td className="px-3 py-3 font-semibold">{item.model_code||"—"}</td><td className="px-3 py-3">{item.product_name}<div className="text-xs text-slate-400">{item.description||""}</div></td><td className="px-3 py-3">{item.price_basis.replace("_"," · ")}</td><td className="px-2 py-2"><input type="number" min="0.01" step="0.01" value={item.quantity} onChange={e=>updateQuoteDetailLine(item.id,"quantity",e.target.value)} className="w-24 rounded border border-slate-200 px-2 py-2"/></td><td className="px-2 py-2"><input type="number" min="0" step="0.01" value={item.unit_price} onChange={e=>updateQuoteDetailLine(item.id,"unit_price",e.target.value)} className="w-28 rounded border border-slate-200 px-2 py-2"/></td><td className="px-3 py-3 font-bold">{cash(Number(item.quantity)*Number(item.unit_price),item.price_basis.endsWith("USD")?"USD":"CNY")}</td><td className="px-3 py-3">{item.packing_quantity??"—"}</td><td className="px-3 py-3"><button type="button" onClick={()=>setQuoteDetailItems(rows=>rows.filter(x=>x.id!==item.id))} className="text-xs font-bold text-red-700">移除</button></td></tr>)}
+        {quoteDetailItems.map(item=><tr key={item.id} className="border-t border-slate-100"><td className="px-3 py-3 font-semibold">{item.model_code||"—"}</td><td className="px-3 py-3">{item.product_name}<div className="text-xs text-slate-400">{item.description||""}</div></td><td className="px-3 py-3">{item.price_basis.replace("_"," · ")}</td><td className="px-2 py-2"><input type="number" min="0.01" step="0.01" value={item.quantity} onChange={e=>updateQuoteDetailLine(item.id,"quantity",e.target.value)} className="w-24 rounded border border-slate-200 px-2 py-2"/></td><td className="px-2 py-2"><input type="number" min="0" step="0.01" value={item.unit_price} onChange={e=>updateQuoteDetailLine(item.id,"unit_price",e.target.value)} className="w-28 rounded border border-slate-200 px-2 py-2"/></td><td className="px-3 py-3 font-bold">{cash(Number(item.quantity)*Number(item.unit_price),item.price_basis.endsWith("USD")?"USD":"CNY")}</td><td className="px-2 py-2"><input type="number" min="1" step="1" value={item.packing_quantity??""} onChange={e=>updateQuoteDetailLine(item.id,"packing_quantity",e.target.value)} className="w-24 rounded border border-slate-200 px-2 py-2"/></td><td className="px-3 py-3"><button type="button" onClick={()=>setQuoteDetailItems(rows=>rows.filter(x=>x.id!==item.id))} className="text-xs font-bold text-red-700">移除</button></td></tr>)}
         {!quoteDetailItems.length&&<tr><td colSpan={8} className="px-3 py-6 text-center text-slate-400">至少保留一条产品明细。</td></tr>}
        </tbody></table></div>
       </div>
