@@ -42,7 +42,7 @@ export default function CRMApp(){
  const [selected,setSelected]=useState<Customer|null>(null),[followups,setFollowups]=useState<Followup[]>([]);
  const [customerOpen,setCustomerOpen]=useState(false),[customerDraft,setCustomerDraft]=useState({company_name:"",contact_name:"",email:"",phone:"",whatsapp:"",website:"",address:"",country:"",city:"",notes:"",tags:""}),[customerEditOpen,setCustomerEditOpen]=useState(false),[customerEditDraft,setCustomerEditDraft]=useState({company_name:"",contact_name:"",email:"",phone:"",whatsapp:"",website:"",address:"",country:"",city:"",notes:"",tags:""}),[relatedQuotes,setRelatedQuotes]=useState<Quote[]>([]),[relatedOrders,setRelatedOrders]=useState<Order[]>([]),[relatedEmailLogs,setRelatedEmailLogs]=useState<QuoteEmailLog[]>([]);
  const [followupDraft,setFollowupDraft]=useState({method:"email",summary:"",next_followup_at:""});
- const [products,setProducts]=useState<Product[]>([]),[productPrices,setProductPrices]=useState<ProductPrice[]>([]),[factories,setFactories]=useState<Factory[]>([]),[attributeDefinitions,setAttributeDefinitions]=useState<AttributeDefinition[]>([]),[productSearch,setProductSearch]=useState(""),[productOpen,setProductOpen]=useState(false),[productImage,setProductImage]=useState<File|null>(null);
+ const [products,setProducts]=useState<Product[]>([]),[productPrices,setProductPrices]=useState<ProductPrice[]>([]),[factories,setFactories]=useState<Factory[]>([]),[attributeDefinitions,setAttributeDefinitions]=useState<AttributeDefinition[]>([]),[productSearch,setProductSearch]=useState(""),[productExactModel,setProductExactModel]=useState(""),[productPowerFilter,setProductPowerFilter]=useState(""),[productBatteryFilter,setProductBatteryFilter]=useState(""),[productFactoryFilter,setProductFactoryFilter]=useState(""),[productOpen,setProductOpen]=useState(false),[productImage,setProductImage]=useState<File|null>(null);
  const [productDraft,setProductDraft]=useState({id:"",name:"",model_code:"",category:"electric-motorcycles",factory_id:"",short_description:"",description:"",hero_image:"",gallery_text:"",specifications_text:"",features_text:"",certifications_text:"",featured:false,sort_order:"0",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
  const [productCustomAttributes,setProductCustomAttributes]=useState<Record<string,unknown>>({});
  const [attributeOpen,setAttributeOpen]=useState(false),[attributeDraft,setAttributeDraft]=useState({factory_id:"",field_key:"",label:"",data_type:"text" as "text"|"number"|"select",options:"",is_required:false,sort_order:"0"});
@@ -620,7 +620,17 @@ function addQuoteLine(){
  async function changePassword(e:React.FormEvent){e.preventDefault();setError("");setNotice("");if(newPassword.length<8){setError("新密码至少需要 8 位。");return;}if(newPassword!==confirmPassword){setError("两次输入的新密码不一致。");return;}setBusy(true);try{const r=await fetch(API+"/auth/v1/user",{method:"PUT",headers:hdr(token),body:JSON.stringify({password:newPassword})});if(!r.ok)throw new Error(await r.text());setNewPassword("");setConfirmPassword("");setNotice("登录密码已修改。");}catch(e){setError(e instanceof Error?e.message:"密码修改失败。");}finally{setBusy(false);}}
 
  const filteredCustomers=useMemo(()=>customers.filter(c=>(statusFilter==="all"||c.status===statusFilter)&&(!search||[c.company_name,c.contact_name,c.email||"",c.country].join(" ").toLowerCase().includes(search.toLowerCase()))),[customers,statusFilter,search]);
- const filteredProducts=useMemo(()=>products.filter(p=>!productSearch||[p.name,p.model_code||"",p.category].join(" ").toLowerCase().includes(productSearch.toLowerCase())),[products,productSearch]);
+ const filteredProducts=useMemo(()=>products.filter(p=>{
+  const keywordMatch=!productSearch||[p.name,p.model_code||"",p.category].join(" ").toLowerCase().includes(productSearch.toLowerCase());
+  const exactMatch=!productExactModel||(p.model_code||"").trim().toLowerCase()===productExactModel.trim().toLowerCase();
+  const factoryMatch=!productFactoryFilter||p.factory_id===productFactoryFilter;
+  const specs=Object.entries(p.specifications||{}).map(([k,v])=>k+" "+v).join(" ");
+  const custom=Object.entries(p.custom_attributes||{}).map(([k,v])=>k+" "+String(v??"")).join(" ");
+  const powerMatch=!productPowerFilter||/power/i.test(specs+" "+custom)&&((specs+" "+custom).toLowerCase().includes(productPowerFilter.toLowerCase()));
+  const batteryValues=[...Object.entries(p.specifications||{}),...Object.entries(p.custom_attributes||{})].filter(([k])=>/battery/i.test(k)).map(([,v])=>String(v??"")).join(" ");
+  const batteryMatch=!productBatteryFilter||batteryValues.toLowerCase().includes(productBatteryFilter.toLowerCase());
+  return keywordMatch&&exactMatch&&factoryMatch&&powerMatch&&batteryMatch;
+ }),[products,productSearch,productExactModel,productPowerFilter,productBatteryFilter,productFactoryFilter]);
  const menu:Array<{id:Module;label:string;icon:string;roles:Role[]}>=[
   {id:"dashboard",label:"销售看板",icon:"▦",roles:["admin","sales"]},
   {id:"customers",label:"客户与跟进",icon:"◎",roles:["admin","sales"]},
@@ -783,7 +793,14 @@ function addQuoteLine(){
       </div>
      </form>}
      <div className={panel}>
-      <div className="mb-4 flex flex-wrap gap-2"><input value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="按产品名称、型号或分类搜索" className={input+" max-w-sm"}/><button onClick={loadProducts} className="rounded-lg border border-slate-300 px-3 text-sm">刷新</button><span className="self-center text-xs text-slate-400">共 {filteredProducts.length} 款产品</span></div>
+      <div className="mb-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+       <label className="text-xs font-semibold text-slate-600">关键词<input value={productSearch} onChange={e=>setProductSearch(e.target.value)} placeholder="名称、型号或分类" className={input+" mt-1"}/></label>
+       <label className="text-xs font-semibold text-slate-600">ITEM 精确型号<input value={productExactModel} onChange={e=>setProductExactModel(e.target.value)} placeholder="Exact model code" className={input+" mt-1"}/></label>
+       <label className="text-xs font-semibold text-slate-600">功率关键词<input value={productPowerFilter} onChange={e=>setProductPowerFilter(e.target.value)} placeholder="e.g. 1500W" className={input+" mt-1"}/></label>
+       <label className="text-xs font-semibold text-slate-600">电池类型<select value={productBatteryFilter} onChange={e=>setProductBatteryFilter(e.target.value)} className={input+" mt-1"}><option value="">全部电池类型</option><option value="Lithium">Lithium</option><option value="Lead-acid">Lead-acid</option></select></label>
+       <label className="text-xs font-semibold text-slate-600">所属工厂<select value={productFactoryFilter} onChange={e=>setProductFactoryFilter(e.target.value)} className={input+" mt-1"}><option value="">全部工厂</option>{factories.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+       <div className="flex flex-wrap items-end gap-2 sm:col-span-2 xl:col-span-5"><button onClick={loadProducts} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">刷新</button><button type="button" onClick={()=>{setProductSearch("");setProductExactModel("");setProductPowerFilter("");setProductBatteryFilter("");setProductFactoryFilter("");}} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">清空筛选</button><span className="self-center text-xs text-slate-400">筛选结果：{filteredProducts.length} 款产品</span></div>
+      </div>
       <div className="overflow-x-auto"><table className="w-full min-w-[1100px] text-left text-sm">
        <thead className="bg-slate-50 text-xs text-slate-500"><tr>{["产品 / 型号","分类","SKD USD","SKD CNY","CKD USD","CKD CNY","40HQ","网站状态","操作"].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead>
        <tbody>{filteredProducts.map(p=>{const pr=productPrices.find(x=>x.product_id===p.id);return <tr key={p.id} className="border-t border-slate-100">
