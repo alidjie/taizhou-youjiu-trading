@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 const API = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://fsqpeuulaglnnwfyxndj.supabase.co";
 const KEY = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || "sb_publishable_27Jb43sOATe3CJlIEP-zVQ_-QFD6HOB";
@@ -13,7 +13,7 @@ type Followup = { id:string; customer_id:string; method:string; summary:string; 
 type Product = { id:string; slug:string; name:string; model_code:string|null; category:string; factory_id:string|null; image:string|null; hero_image:string|null; published:boolean; updated_at:string };
 type ProductPrice = { product_id:string; factory_id:string; skd_price_usd:number|null; skd_price_cny:number|null; ckd_price_usd:number|null; ckd_price_cny:number|null; packing_quantity_40hq:number|null };
 type Factory = { id:string; factory_code:string; name:string; status:string };
-type Quote = { id:string; quote_no:string; customer_id:string; owner_id:string; status:string; total_usd:number; total_cny:number; valid_until:string|null; incoterm:string|null; loading_port:string|null; destination_port:string|null; payment_terms:string|null; delivery_terms:string|null; packaging_terms:string|null; warranty_terms:string|null; remarks:string|null; seller_snapshot:Record<string,unknown>; buyer_snapshot:Record<string,unknown>; branding_snapshot:Record<string,unknown>; created_at:string; updated_at:string };\ntype QuoteItem = { id:string; quote_id:string; line_no:number; model_code:string|null; product_name:string; description:string|null; price_basis:string; quantity:number; packing_quantity:number|null; unit_price:number; line_total:number; product_snapshot:Record<string,unknown>; image_url:string|null };\ntype QuoteEmailLog = { id:string; recipient:string; subject:string; method:string; sent_at:string; body:string|null; metadata:Record<string,unknown> };
+type Quote = { id:string; quote_no:string; customer_id:string; owner_id:string; status:string; total_usd:number; total_cny:number; valid_until:string|null; incoterm:string|null; loading_port:string|null; destination_port:string|null; payment_terms:string|null; delivery_terms:string|null; packaging_terms:string|null; warranty_terms:string|null; remarks:string|null; seller_snapshot:Record<string,unknown>; buyer_snapshot:Record<string,unknown>; branding_snapshot:Record<string,unknown>; created_at:string; updated_at:string };\ntype QuoteItem = { id:string; quote_id:string; product_id:string|null; factory_id:string|null; line_no:number; model_code:string|null; product_name:string; description:string|null; price_basis:string; quantity:number; packing_quantity:number|null; unit_price:number; line_total:number; product_snapshot:Record<string,unknown>; image_url:string|null };\ntype QuoteEmailLog = { id:string; recipient:string; subject:string; method:string; sent_at:string; body:string|null; metadata:Record<string,unknown> };
 type QuoteLineDraft = { id:string; product_id:string; price_basis:string; quantity:string };
 type Order = { id:string; order_no:string; customer_id:string; status:string; total_usd:number; total_cny:number; order_date:string; expected_delivery_date:string|null; actual_delivery_date:string|null; delivery_progress:string|null; buyer_snapshot:{company_name?:string;contact_name?:string;country?:string} };
 type OrderUpdate = { id:string; order_id:string; status:string|null; progress_description:string; expected_delivery_date:string|null; actual_delivery_date:string|null; created_at:string };
@@ -48,6 +48,8 @@ export default function CRMApp(){
  const [perf,setPerf]=useState<Perf[]>([]),[kpis,setKpis]=useState({customers:0,won:0,usd:0,cny:0,orders:0});
   const [branding,setBranding]=useState<Branding|null>(null),[brandingDraft,setBrandingDraft]=useState({legal_name:"",address:"",telephone:"",email:"",website:"",bank_name:"",bank_address:"",beneficiary:"",account_number:"",swift_code:"",logo_url:"",stamp_url:""}),[brandingLogo,setBrandingLogo]=useState<File|null>(null),[brandingStamp,setBrandingStamp]=useState<File|null>(null);
  const [newPassword,setNewPassword]=useState(""),[confirmPassword,setConfirmPassword]=useState("");
+ const [quoteOriginalItemIds,setQuoteOriginalItemIds]=useState<string[]>([]),[quotePreviewHtml,setQuotePreviewHtml]=useState(""),[quotePreviewOpen,setQuotePreviewOpen]=useState(false),[quotePreviewZoom,setQuotePreviewZoom]=useState(100),[quotePreviewFullScreen,setQuotePreviewFullScreen]=useState(false);
+ const quotePreviewFrame=useRef<HTMLIFrameElement|null>(null);
 
  const req=useCallback(async<T,>(path:string,init:RequestInit={}):Promise<T>=>{
   if(!token)throw new Error("登录状态已失效，请重新登录。");
@@ -78,7 +80,7 @@ export default function CRMApp(){
   return()=>{active=false;};
  },[establish]);
 
- async function login(e:React.FormEvent){e.preventDefault();setLoading(true);setError("");setNotice("");try{const r=await fetch(API+"/auth/v1/token?grant_type=password",{method:"POST",headers:{apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify({email:email.trim(),password})});const j=await r.json() as {access_token?:string;refresh_token?:string;msg?:string;message?:string};if(!r.ok||!j.access_token||!j.refresh_token)throw new Error(j.msg||j.message||"邮箱或密码错误。");await establish(j.access_token,j.refresh_token);}catch(e){setError(e instanceof Error?e.message:"登录失败。");}finally{setLoading(false);}}
+ async function login(e:React.FormEvent){e.preventDefault();setLoading(true);setError("");setNotice("");try{const r=await fetch(API+"/functions/v1/crm-login",{method:"POST",headers:{apikey:KEY,"Content-Type":"application/json"},body:JSON.stringify({username:email.trim(),password}),cache:"no-store"});const j=await r.json() as {access_token?:string;refresh_token?:string;error?:string};if(!r.ok||!j.access_token||!j.refresh_token)throw new Error(j.error||"账号或密码错误。");await establish(j.access_token,j.refresh_token);}catch(e){setError(e instanceof Error?e.message:"登录失败。");}finally{setLoading(false);}}
  async function logout(){try{if(token)await fetch(API+"/auth/v1/logout",{method:"POST",headers:{apikey:KEY,Authorization:"Bearer "+token}});}finally{localStorage.removeItem(SESSION_KEY);setToken("");setUserId("");setProfile(null);setCustomers([]);setProducts([]);setSelected(null);setNotice("已安全退出。");}}
 
  const loadDashboard=useCallback(async()=>{try{
@@ -87,7 +89,7 @@ export default function CRMApp(){
  }catch(e){setError(e instanceof Error?e.message:"看板加载失败。");}},[req]);
  const loadCustomers=useCallback(async()=>{setBusy(true);try{setCustomers(await req<Customer[]>("crm_customers?select=*&order=updated_at.desc&limit=1000"));}catch(e){setError(e instanceof Error?e.message:"客户加载失败。");}finally{setBusy(false);}},[req]);
  const loadProducts=useCallback(async()=>{setBusy(true);try{const [rows,priceRows,factoryRows]=await Promise.all([req<Product[]>("products?select=id,slug,name,model_code,category,factory_id,image,hero_image,published,updated_at&order=created_at.desc&limit=2000"),req<ProductPrice[]>("crm_product_prices?select=product_id,factory_id,skd_price_usd,skd_price_cny,ckd_price_usd,ckd_price_cny,packing_quantity_40hq&limit=2000"),req<Factory[]>("crm_factories?select=id,factory_code,name,status&order=name")]);setProducts(rows);setProductPrices(priceRows);setFactories(factoryRows);}catch(e){setError(e instanceof Error?e.message:"产品加载失败。");}finally{setBusy(false);}},[req]);
- const loadQuotes=useCallback(async()=>{try{setQuotes(await req<Quote[]>("crm_quotes?select=id,quote_no,status,total_usd,total_cny,created_at&order=created_at.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"报价加载失败。");}},[req]);
+ const loadQuotes=useCallback(async()=>{try{setQuotes(await req<Quote[]>("crm_quotes?select=*&order=created_at.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"报价加载失败。");}},[req]);
  const loadOrders=useCallback(async()=>{try{setOrders(await req<Order[]>("crm_orders?select=id,order_no,customer_id,status,total_usd,total_cny,order_date,expected_delivery_date,actual_delivery_date,delivery_progress,buyer_snapshot&order=order_date.desc&limit=500"));}catch(e){setError(e instanceof Error?e.message:"订单加载失败。");}},[req]);
  async function openOrder(order:Order){
    setSelectedOrder(order);
@@ -436,6 +438,178 @@ function addQuoteLine(){
   setQuoteLineDraft(v=>({...v,product_id:""}));
 }
 
+
+async function openQuote(row:Quote){
+ setError("");setNotice("");
+ try{
+  const [quoteRows,items,logs]=await Promise.all([
+   req<Quote[]>("crm_quotes?select=*&id=eq."+encodeURIComponent(row.id)+"&limit=1"),
+   req<QuoteItem[]>("crm_quote_items?select=*&quote_id=eq."+encodeURIComponent(row.id)+"&order=line_no.asc&limit=500"),
+   req<QuoteEmailLog[]>("crm_quote_email_logs?select=id,recipient,subject,method,sent_at,body,metadata&quote_id=eq."+encodeURIComponent(row.id)+"&order=sent_at.desc&limit=100")
+  ]);
+  const q=quoteRows[0]||row;
+  setSelectedQuote(q);
+  setQuoteEditDraft({
+   valid_until:q.valid_until||"",incoterm:q.incoterm||"FOB",loading_port:q.loading_port||"",
+   destination_port:q.destination_port||"",payment_terms:q.payment_terms||"",
+   delivery_terms:q.delivery_terms||"",packaging_terms:q.packaging_terms||"",
+   warranty_terms:q.warranty_terms||"",remarks:q.remarks||""
+  });
+  setQuoteDetailItems(items);
+  setQuoteOriginalItemIds(items.map(x=>x.id));
+  setQuoteEmailLogs(logs);
+ }catch(e){setError(e instanceof Error?e.message:"报价详情加载失败。");}
+}
+function updateQuoteItem(itemId:string,key:"quantity"|"unit_price"|"product_name"|"description",value:string){
+ setQuoteDetailItems(rows=>rows.map(row=>{
+  if(row.id!==itemId)return row;
+  if(key==="quantity"||key==="unit_price"){
+   const n=value===""?0:Number(value);
+   const updated={...row,[key]:n};
+   updated.line_total=Number(updated.quantity||0)*Number(updated.unit_price||0);
+   return updated;
+  }
+  return {...row,[key]:value};
+ }));
+}
+function addQuoteDetailLine(){
+ if(!selectedQuote)return;
+ const product=products.find(p=>p.id===quoteLineDraft.product_id);
+ const price=productPrices.find(p=>p.product_id===quoteLineDraft.product_id);
+ if(!product||!price){setError("请选择已配置价格的产品。");return;}
+ const unitPrice=Number((price as unknown as Record<string,number>)[quoteLineDraft.price_basis]||0);
+ if(unitPrice<=0){setError("该产品尚未配置此报价类型的价格。");return;}
+ const quantity=Number(quoteLineDraft.quantity);
+ if(!Number.isFinite(quantity)||quantity<=0){setError("数量必须大于零。");return;}
+ const line:QuoteItem={
+  id:"new-"+crypto.randomUUID(),quote_id:selectedQuote.id,product_id:product.id,factory_id:product.factory_id,
+  line_no:quoteDetailItems.length+1,model_code:product.model_code,product_name:product.name,
+  description:null,price_basis:quoteLineDraft.price_basis,quantity,packing_quantity:price.packing_quantity_40hq,
+  unit_price:unitPrice,line_total:unitPrice*quantity,
+  product_snapshot:{id:product.id,slug:product.slug,name:product.name,model_code:product.model_code,category:product.category},
+  image_url:product.hero_image||product.image
+ };
+ setQuoteDetailItems(rows=>[...rows,line]);
+ setError("");
+}
+async function saveQuoteDetails(e:React.FormEvent){
+ e.preventDefault();
+ if(!selectedQuote)return;
+ if(selectedQuote.status==="converted"){setError("已转订单的报价单不能再修改。");return;}
+ if(!quoteDetailItems.length){setError("报价单至少保留一条产品明细。");return;}
+ if(quoteDetailItems.some(x=>!Number.isFinite(Number(x.quantity))||Number(x.quantity)<=0||!Number.isFinite(Number(x.unit_price))||Number(x.unit_price)<0)){
+  setError("产品数量必须大于零，单价不能小于零。");return;
+ }
+ setBusy(true);setError("");setNotice("");
+ try{
+  await req("crm_quotes?id=eq."+encodeURIComponent(selectedQuote.id),{
+   method:"PATCH",headers:{Prefer:"return=minimal"},
+   body:JSON.stringify({
+    valid_until:quoteEditDraft.valid_until||null,incoterm:quoteEditDraft.incoterm||null,
+    loading_port:quoteEditDraft.loading_port||null,destination_port:quoteEditDraft.destination_port||null,
+    payment_terms:quoteEditDraft.payment_terms||null,delivery_terms:quoteEditDraft.delivery_terms||null,
+    packaging_terms:quoteEditDraft.packaging_terms||null,warranty_terms:quoteEditDraft.warranty_terms||null,
+    remarks:quoteEditDraft.remarks||null,updated_at:new Date().toISOString()
+   })
+  });
+  const currentIds=quoteDetailItems.filter(x=>!x.id.startsWith("new-")).map(x=>x.id);
+  const deletedIds=quoteOriginalItemIds.filter(id=>!currentIds.includes(id));
+  for(const id of deletedIds){
+   await req("crm_quote_items?id=eq."+encodeURIComponent(id),{method:"DELETE",headers:{Prefer:"return=minimal"}});
+  }
+  for(let i=0;i<quoteDetailItems.length;i++){
+   const item=quoteDetailItems[i];
+   const itemPayload={
+    line_no:i+1,product_name:item.product_name,description:item.description,
+    quantity:Number(item.quantity),unit_price:Number(item.unit_price),
+    line_total:Number(item.quantity)*Number(item.unit_price)
+   };
+   if(item.id.startsWith("new-")){
+    await req("crm_quote_items",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({
+     quote_id:selectedQuote.id,product_id:item.product_id,factory_id:item.factory_id,
+     ...itemPayload,model_code:item.model_code,price_basis:item.price_basis,
+     packing_quantity:item.packing_quantity,product_snapshot:item.product_snapshot,image_url:item.image_url
+    })});
+   }else{
+    await req("crm_quote_items?id=eq."+encodeURIComponent(item.id),{
+     method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify(itemPayload)
+    });
+   }
+  }
+  await loadQuotes();
+  await openQuote(selectedQuote);
+  await loadDashboard();
+  setNotice("报价单内容已保存，USD/CNY 合计由数据库自动重新计算。");
+ }catch(e){setError(e instanceof Error?e.message:"报价单保存失败。请检查产品明细和权限。");}
+ finally{setBusy(false);}
+}
+function previewQuote(){
+ if(!selectedQuote)return;
+ const esc=(v:unknown)=>String(v??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","""":"&quot;","'":"&#39;"}[ch]||ch));
+ const get=(o:Record<string,unknown>|null|undefined,k:string)=>String(o?.[k]??"");
+ const buyer=selectedQuote.buyer_snapshot||{};
+ const seller=selectedQuote.seller_snapshot||{};
+ const brand=selectedQuote.branding_snapshot||{};
+ const title="QUOTATION";
+ const rows=quoteDetailItems.map((x,i)=>"<tr><td>"+(i+1)+"</td><td>"+esc(x.model_code)+"</td><td>"+esc(x.product_name)+"<br><small>"+esc(x.description)+"</small></td><td>"+esc(x.price_basis.replace("_"," / "))+"</td><td class='num'>"+esc(x.quantity)+"</td><td class='num'>"+esc(x.unit_price.toFixed(2))+"</td><td class='num'>"+esc(x.line_total.toFixed(2))+"</td></tr>").join("");
+ const logo=get(brand,"logo_url");
+ const stamp=get(brand,"stamp_url");
+ const company=esc(get(brand,"legal_name")||get(seller,"company_name")||"YOUJIU");
+ const bank="<b>Bank:</b> "+esc(get(brand,"bank_name"))+" &nbsp; <b>Beneficiary:</b> "+esc(get(brand,"beneficiary"))+" &nbsp; <b>Account:</b> "+esc(get(brand,"account_number"))+" &nbsp; <b>SWIFT:</b> "+esc(get(brand,"swift_code"));
+ const html=[
+ "<!doctype html><html><head><meta charset='utf-8'><title>Quotation "+esc(selectedQuote.quote_no)+"</title><style>",
+ "@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;color:#17212b;font-size:11px;line-height:1.45}",
+ ".top{display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #263746;padding-bottom:12px;margin-bottom:18px}.top img{max-width:190px;max-height:65px;object-fit:contain}",
+ "h1{font-size:24px;letter-spacing:.06em;margin:0 0 6px}.muted{color:#657482}.meta{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}.box{border:1px solid #cbd5df;padding:10px;min-height:88px}.box b{display:block;text-transform:uppercase;font-size:9px;color:#667482;margin-bottom:6px}",
+ "table{width:100%;border-collapse:collapse;margin-top:18px}th{background:#e9eef2;text-align:left;font-size:9px;text-transform:uppercase}td,th{border:1px solid #cbd5df;padding:7px;vertical-align:top}.num{text-align:right;white-space:nowrap}",
+ ".terms{margin-top:16px;border:1px solid #cbd5df;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px}.totals{text-align:right;margin-top:14px;font-size:14px;font-weight:bold}.signature{display:flex;justify-content:flex-end;align-items:end;min-height:110px;margin-top:24px}.signature img{max-height:85px;max-width:160px;object-fit:contain}.footer{border-top:1px solid #cbd5df;margin-top:25px;padding-top:8px;font-size:9px;color:#657482}</style></head><body>",
+ "<div class='top'><div>"+(logo?"<img src='"+esc(logo)+"' alt='Logo'>":"<strong>"+company+"</strong>")+"</div><div style='text-align:right'><h1>QUOTATION</h1><b>Quote No.:</b> "+esc(selectedQuote.quote_no)+"<br><b>Date:</b> "+esc(new Date(selectedQuote.created_at).toLocaleDateString("en-GB"))+"<br><b>Valid Until:</b> "+esc(selectedQuote.valid_until||"—")+"</div></div>",
+ "<div class='meta'><div class='box'><b>Seller / Exporter</b><strong>"+company+"</strong><br>"+esc(get(brand,"address")||get(seller,"address"))+"<br>"+esc(get(brand,"telephone")||get(seller,"telephone"))+"<br>"+esc(get(brand,"email")||get(seller,"email"))+"<br>"+esc(get(brand,"website")||get(seller,"website"))+"</div>",
+ "<div class='box'><b>Buyer / Importer</b><strong>"+esc(get(buyer,"company_name"))+"</strong><br>"+esc(get(buyer,"contact_name"))+"<br>"+esc(get(buyer,"address"))+"<br>"+esc(get(buyer,"country"))+"<br>"+esc(get(buyer,"email"))+"</div></div>",
+ "<table><thead><tr><th>No.</th><th>ITEM / Model</th><th>Product Description</th><th>Condition</th><th class='num'>Qty</th><th class='num'>Unit Price</th><th class='num'>Amount</th></tr></thead><tbody>"+(rows||"<tr><td colspan='7'>No items</td></tr>")+"</tbody></table>",
+ "<div class='totals'>Total USD: "+esc(cash(selectedQuote.total_usd,"USD"))+" &nbsp; | &nbsp; Total CNY: "+esc(cash(selectedQuote.total_cny,"CNY"))+"</div>",
+ "<div class='terms'><div><b>Incoterms:</b> "+esc(selectedQuote.incoterm||"—")+"</div><div><b>Loading Port:</b> "+esc(selectedQuote.loading_port||"—")+"</div><div><b>Destination Port:</b> "+esc(selectedQuote.destination_port||"—")+"</div><div><b>Payment Terms:</b> "+esc(selectedQuote.payment_terms||"—")+"</div><div><b>Delivery Terms:</b> "+esc(selectedQuote.delivery_terms||"—")+"</div><div><b>Packaging:</b> "+esc(selectedQuote.packaging_terms||"—")+"</div><div><b>Warranty:</b> "+esc(selectedQuote.warranty_terms||"—")+"</div><div><b>Remarks:</b> "+esc(selectedQuote.remarks||"—")+"</div></div>",
+ "<p style='margin-top:16px'>"+bank+"</p><div class='signature'>"+(stamp?"<img src='"+esc(stamp)+"' alt='Company Stamp'>":"<div>Authorized Signature / Company Stamp</div>")+"</div>",
+ "<div class='footer'>"+company+" · "+esc(get(brand,"website")||get(seller,"website"))+"</div></body></html>"
+ ].join("");
+ setQuotePreviewHtml(html);
+ setQuotePreviewZoom(100);
+ setQuotePreviewFullScreen(false);
+ setQuotePreviewOpen(true);
+}
+async function createQuoteEmailDraft(){
+ if(!selectedQuote)return;
+ const buyer=selectedQuote.buyer_snapshot||{};
+ const recipient=String(buyer.email||"").trim();
+ if(!recipient){setError("该客户档案没有邮箱地址，请先补充客户邮箱。");return;}
+ const subject="Quotation "+selectedQuote.quote_no+" - YOUJIU";
+ const body=[
+  "Dear "+String(buyer.contact_name||"Customer")+",",
+  "",
+  "Please find our quotation "+selectedQuote.quote_no+" for your review.",
+  "Total USD: "+cash(selectedQuote.total_usd,"USD"),
+  "Total CNY: "+cash(selectedQuote.total_cny,"CNY"),
+  "Incoterms: "+(selectedQuote.incoterm||""),
+  "Payment Terms: "+(selectedQuote.payment_terms||""),
+  "",
+  "Please let us know if you need any adjustment.",
+  "",
+  "Best regards,",
+  "YOUJIU Export Team"
+ ].join("\n");
+ try{
+  const mailto="mailto:"+encodeURIComponent(recipient)+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+  window.location.href=mailto;
+  await req("crm_quote_email_logs",{
+   method:"POST",headers:{Prefer:"return=minimal"},
+   body:JSON.stringify({quote_id:selectedQuote.id,customer_id:selectedQuote.customer_id,logged_by:userId,recipient,subject,body,method:"email_client",metadata:{event:"draft_opened"}})
+  });
+  const logs=await req<QuoteEmailLog[]>("crm_quote_email_logs?select=id,recipient,subject,method,sent_at,body,metadata&quote_id=eq."+encodeURIComponent(selectedQuote.id)+"&order=sent_at.desc&limit=100");
+  setQuoteEmailLogs(logs);
+  setNotice("已调用邮件客户端生成草稿并记录操作。是否真正发送，需要在邮件客户端中确认。");
+ }catch(e){setError(e instanceof Error?e.message:"邮件草稿记录失败。");}
+}
+
  async function changePassword(e:React.FormEvent){e.preventDefault();setError("");setNotice("");if(newPassword.length<8){setError("新密码至少需要 8 位。");return;}if(newPassword!==confirmPassword){setError("两次输入的新密码不一致。");return;}setBusy(true);try{const r=await fetch(API+"/auth/v1/user",{method:"PUT",headers:hdr(token),body:JSON.stringify({password:newPassword})});if(!r.ok)throw new Error(await r.text());setNewPassword("");setConfirmPassword("");setNotice("登录密码已修改。");}catch(e){setError(e instanceof Error?e.message:"密码修改失败。");}finally{setBusy(false);}}
 
  const filteredCustomers=useMemo(()=>customers.filter(c=>(statusFilter==="all"||c.status===statusFilter)&&(!search||[c.company_name,c.contact_name,c.email||"",c.country].join(" ").toLowerCase().includes(search.toLowerCase()))),[customers,statusFilter,search]);
@@ -460,7 +634,7 @@ function addQuoteLine(){
    <div className="text-xs font-bold tracking-[.22em] text-emerald-700">YOUJIU BUSINESS SYSTEM</div>
    <h1 className="mt-3 text-2xl font-black text-slate-900">外贸 CRM 管理系统</h1>
    <p className="mt-2 text-sm text-slate-500">使用管理员分配的账号和密码登录</p>
-   <label className="mt-6 block text-sm font-semibold">登录邮箱<input required type="email" value={email} onChange={e=>setEmail(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-3 outline-none focus:border-emerald-600"/></label>
+   <label className="mt-6 block text-sm font-semibold">用户名 / 登录邮箱<input required type="text" autoComplete="username" value={email} onChange={e=>setEmail(e.target.value)} placeholder="请输入管理员分配的用户名或邮箱" className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-3 outline-none focus:border-emerald-600"/></label>
    <label className="mt-4 block text-sm font-semibold">密码<input required type="password" value={password} onChange={e=>setPassword(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-3 outline-none focus:border-emerald-600"/></label>
    {error&&<p className="mt-4 rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
    {notice&&<p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-700">{notice}</p>}
