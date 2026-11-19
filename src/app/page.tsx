@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+import CRMApp from "../components/crm/CRMApp";
 import Link from "next/link";
 import Image from "next/image";
 import Header from "../components/Header";
@@ -26,6 +28,14 @@ const fallbackHero = {
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
+  // Defensive host-based rendering: even if middleware host rewriting is bypassed,
+  // the CRM apex route must never fall through to the public marketing homepage.
+  const requestHeaders = await headers();
+  const forwardedHost = requestHeaders.get("x-forwarded-host") || "";
+  const requestHost = forwardedHost || requestHeaders.get("host") || "";
+  const hostname = requestHost.split(",")[0].trim().split(":")[0].toLowerCase();
+  if (hostname === "crm.almcp.com") return <CRMApp />;
+
   const locale = await getLocale();
   const [heroBlock, whyBlock, ctaBlock, featuredProducts] = await Promise.all([
     getCmsBlock("home.hero"), getCmsBlock("home.why"), getCmsBlock("home.cta"), getPublishedProducts()
