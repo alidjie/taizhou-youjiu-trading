@@ -40,9 +40,6 @@ function locationLabel(event: AnalyticsEvent) {
   return [event.city, event.region, event.country].filter(Boolean).join(" · ") || "地区信息暂不可用";
 }
 
-function pageLabel(event: AnalyticsEvent) {
-  return event.page_title || event.path;
-}
 
 export default function VisitorMonitor({ accessToken }: { accessToken: string }) {
   const [events, setEvents] = useState<AnalyticsEvent[]>([]);
