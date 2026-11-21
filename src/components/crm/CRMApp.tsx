@@ -10,7 +10,7 @@ type Role = "admin" | "sales" | "factory";
 type Profile = { user_id:string; username:string; email:string; full_name:string; role:Role; factory_id:string|null; is_active:boolean; created_at?:string };
 type Customer = { id:string; company_name:string; contact_name:string; email:string|null; phone:string|null; whatsapp:string|null; website:string|null; address:string|null; country:string; city:string|null; owner_id:string; status:"prospect"|"following"|"won"|"lost"; tags:string[]; notes:string|null; last_contacted_at:string|null; next_followup_at:string|null; created_at:string; updated_at:string };
 type Followup = { id:string; customer_id:string; method:string; summary:string; followed_at:string; next_followup_at:string|null };
-type Product = { id:string; slug:string; name:string; model_code:string|null; category:string; factory_id:string|null; image:string|null; hero_image:string|null; published:boolean; updated_at:string; short_description?:string|null; description?:string|null; gallery?:string[]; specifications?:Record<string,string>; features?:string[]; certifications?:string[]; custom_attributes?:Record<string,unknown>; featured?:boolean; sort_order?:number };
+type Product = { id:string; slug:string; name:string; model_code:string|null; category:string; factory_id:string|null; image:string|null; hero_image:string|null; published:boolean; updated_at:string; short_description?:string|null; description?:string|null; gallery?:string[]; specifications?:Record<string,string>; features?:string[]; certifications?:string[]; custom_attributes?:Record<string,unknown>; featured?:boolean; sort_order?:number; seo_title?:string|null; seo_description?:string|null };
 type ProductPrice = { product_id:string; factory_id:string; skd_price_usd:number|null; skd_price_cny:number|null; ckd_price_usd:number|null; ckd_price_cny:number|null; packing_quantity_40hq:number|null };
 type Factory = { id:string; factory_code:string; name:string; status:string };
 type AttributeDefinition = { id:string; factory_id:string|null; field_key:string; label:string; data_type:"text"|"number"|"select"; options:string[]; is_required:boolean; sort_order:number };
@@ -43,7 +43,7 @@ export default function CRMApp(){
  const [customerOpen,setCustomerOpen]=useState(false),[customerDraft,setCustomerDraft]=useState({company_name:"",contact_name:"",email:"",phone:"",whatsapp:"",website:"",address:"",country:"",city:"",notes:"",tags:""}),[customerEditOpen,setCustomerEditOpen]=useState(false),[customerEditDraft,setCustomerEditDraft]=useState({company_name:"",contact_name:"",email:"",phone:"",whatsapp:"",website:"",address:"",country:"",city:"",notes:"",tags:""}),[relatedQuotes,setRelatedQuotes]=useState<Quote[]>([]),[relatedOrders,setRelatedOrders]=useState<Order[]>([]),[relatedEmailLogs,setRelatedEmailLogs]=useState<QuoteEmailLog[]>([]);
  const [followupDraft,setFollowupDraft]=useState({method:"email",summary:"",next_followup_at:""}),[customerOwnerId,setCustomerOwnerId]=useState(""),[customerEditOwnerId,setCustomerEditOwnerId]=useState("");
  const [products,setProducts]=useState<Product[]>([]),[productPrices,setProductPrices]=useState<ProductPrice[]>([]),[factories,setFactories]=useState<Factory[]>([]),[attributeDefinitions,setAttributeDefinitions]=useState<AttributeDefinition[]>([]),[productSearch,setProductSearch]=useState(""),[productExactModel,setProductExactModel]=useState(""),[productPowerFilter,setProductPowerFilter]=useState(""),[productBatteryFilter,setProductBatteryFilter]=useState(""),[productFactoryFilter,setProductFactoryFilter]=useState(""),[productOpen,setProductOpen]=useState(false),[productImage,setProductImage]=useState<File|null>(null);
- const [productDraft,setProductDraft]=useState({id:"",name:"",model_code:"",category:"electric-motorcycles",factory_id:"",short_description:"",description:"",hero_image:"",gallery_text:"",specifications_text:"",features_text:"",certifications_text:"",featured:false,sort_order:"0",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
+ const [productDraft,setProductDraft]=useState({id:"",name:"",model_code:"",category:"electric-motorcycles",factory_id:"",short_description:"",description:"",hero_image:"",gallery_text:"",specifications_text:"",features_text:"",certifications_text:"",seo_title:"",seo_description:"",featured:false,sort_order:"0",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
  const [productCustomAttributes,setProductCustomAttributes]=useState<Record<string,unknown>>({});
  const [attributeOpen,setAttributeOpen]=useState(false),[attributeDraft,setAttributeDraft]=useState({factory_id:"",field_key:"",label:"",data_type:"text" as "text"|"number"|"select",options:"",is_required:false,sort_order:"0"});
  const [factoryOpen,setFactoryOpen]=useState(false),[factoryDraft,setFactoryDraft]=useState({factory_code:"",name:"",contact_name:"",email:"",phone:"",address:""});
@@ -310,7 +310,7 @@ export default function CRMApp(){
    gallery_text:(product.gallery||[]).join("\n"),
    specifications_text:Object.entries(product.specifications||{}).map(([k,v])=>k+": "+v).join("\n"),
    features_text:(product.features||[]).join("\n"),certifications_text:(product.certifications||[]).join("\n"),
-   featured:Boolean(product.featured),sort_order:String(product.sort_order??0),
+   featured:Boolean(product.featured),sort_order:String(product.sort_order??0),seo_title:product.seo_title||"",seo_description:product.seo_description||"",
    skd_price_usd:p?.skd_price_usd==null?"":String(p.skd_price_usd),skd_price_cny:p?.skd_price_cny==null?"":String(p.skd_price_cny),
    ckd_price_usd:p?.ckd_price_usd==null?"":String(p.ckd_price_usd),ckd_price_cny:p?.ckd_price_cny==null?"":String(p.ckd_price_cny),
    packing_quantity_40hq:p?.packing_quantity_40hq==null?"":String(p.packing_quantity_40hq)
@@ -319,7 +319,7 @@ export default function CRMApp(){
   setProductImage(null);setProductOpen(true);setError("");setNotice("");
  }
  function resetProductDraft(){
-  setProductDraft({id:"",name:"",model_code:"",category:"electric-motorcycles",factory_id:profile?.role==="factory"?(profile.factory_id||""):"",short_description:"",description:"",hero_image:"",gallery_text:"",specifications_text:"",features_text:"",certifications_text:"",featured:false,sort_order:"0",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
+  setProductDraft({id:"",name:"",model_code:"",category:"electric-motorcycles",factory_id:profile?.role==="factory"?(profile.factory_id||""):"",short_description:"",description:"",hero_image:"",gallery_text:"",specifications_text:"",features_text:"",certifications_text:"",seo_title:"",seo_description:"",featured:false,sort_order:"0",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
   setProductCustomAttributes({});setProductImage(null);setProductOpen(true);setError("");setNotice("");
  }
  async function deleteProduct(product:Product){
@@ -379,7 +379,7 @@ export default function CRMApp(){
     model_code:productDraft.model_code.trim()||null,category:productDraft.category,factory_id:factoryId,
     published:productDraft.id?(products.find(x=>x.id===id)?.published??false):false,hero_image:imageUrl,image:imageUrl,gallery,specs:Object.entries(specifications).map(([k,v])=>k+": "+v),
     features:parseLines(productDraft.features_text),specifications,certifications:parseLines(productDraft.certifications_text),
-    short_description:productDraft.short_description.trim()||null,description:productDraft.description.trim()||null,
+    short_description:productDraft.short_description.trim()||null,description:productDraft.description.trim()||null,seo_title:productDraft.seo_title.trim()||null,seo_description:productDraft.seo_description.trim()||null,
     featured:productDraft.featured,sort_order:Number(productDraft.sort_order)||0,custom_attributes:productCustomAttributes
    };
    if(!Object.values(prices).some(v=>v!==null))throw new Error("至少填写一项 SKD/CKD 价格或 40HQ 装箱量。");
@@ -392,10 +392,33 @@ export default function CRMApp(){
     await req<string>("rpc/crm_create_product_with_prices",{method:"POST",body:JSON.stringify({p_product:product,p_prices:prices})});
     setNotice("新产品及价格已创建为内部草稿。");
    }
-   setProductOpen(false);setProductDraft({id:"",name:"",model_code:"",category:"electric-motorcycles",factory_id:profile.role==="factory"?(profile.factory_id||""):"",short_description:"",description:"",hero_image:"",gallery_text:"",specifications_text:"",features_text:"",certifications_text:"",featured:false,sort_order:"0",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
+   setProductOpen(false);setProductDraft({id:"",name:"",model_code:"",category:"electric-motorcycles",factory_id:profile.role==="factory"?(profile.factory_id||""):"",short_description:"",description:"",hero_image:"",gallery_text:"",specifications_text:"",features_text:"",certifications_text:"",seo_title:"",seo_description:"",featured:false,sort_order:"0",skd_price_usd:"",skd_price_cny:"",ckd_price_usd:"",ckd_price_cny:"",packing_quantity_40hq:""});
    setProductCustomAttributes({});setProductImage(null);
    await loadProducts();
   }catch(e){setError(e instanceof Error?e.message:"产品保存失败。");}
+  finally{setBusy(false);}
+ }
+ async function setProductWebsitePublication(product:Product, publish:boolean){
+  if(profile?.role!=="admin"){setError("只有 CRM 管理员可以发布或撤回网站产品。");return;}
+  if(publish){
+   const missing:string[]=[];
+   if(!product.name.trim())missing.push("产品名称");
+   if(!product.model_code?.trim())missing.push("型号");
+   if(!product.slug.trim())missing.push("URL Slug");
+   if(!product.hero_image?.trim()&&!product.image?.trim())missing.push("产品主图");
+   if(!product.short_description?.trim())missing.push("简短介绍");
+   if(!product.description?.trim())missing.push("详细介绍");
+   if(!Object.keys(product.specifications||{}).length)missing.push("技术参数");
+   if(missing.length){setError("暂不能发布。请先编辑并补齐："+missing.join("、")+"。");return;}
+  }
+  const actionText=publish?"发布到公开网站":"从公开网站撤回";
+  if(!window.confirm(`确认将产品“${product.name}”${actionText}？${publish?"发布后访客可以在网站产品目录中查看并提交询盘。":"撤回后该产品将不再显示在网站产品目录中。"}`))return;
+  setBusy(true);setError("");setNotice("");
+  try{
+   await req("products?id=eq."+encodeURIComponent(product.id),{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({published:publish,updated_at:new Date().toISOString()})});
+   await loadProducts();
+   setNotice(publish?"产品已成功发布到网站。":"产品已从网站撤回；CRM 产品档案和内部价格均予以保留。");
+  }catch(e){setError(e instanceof Error?e.message:"产品网站发布状态更新失败。请确认管理员权限。");}
   finally{setBusy(false);}
  }
  async function createFactory(e:React.FormEvent){e.preventDefault();setBusy(true);setError("");try{await req("crm_factories",{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({...factoryDraft,status:"active"})});setFactoryDraft({factory_code:"",name:"",contact_name:"",email:"",phone:"",address:""});setFactoryOpen(false);setNotice("工厂档案已创建。现在可以为工厂分配账号并录入产品。");await loadProducts();}catch(e){setError(e instanceof Error?e.message:"工厂创建失败。");}finally{setBusy(false);}}
@@ -784,6 +807,13 @@ function addQuoteLine(){
        </div>
       </div>
       <div className="border-t border-slate-200 pt-4">
+       <h4 className="font-bold">网站 SEO 信息（建议填写）</h4>
+       <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <label className="text-sm font-semibold">SEO 标题<input maxLength={70} value={productDraft.seo_title} onChange={e=>setProductDraft(v=>({...v,seo_title:e.target.value}))} placeholder="Product name + core search keyword" className={input+" mt-1.5"}/></label>
+        <label className="text-sm font-semibold">Meta Description<textarea maxLength={180} rows={2} value={productDraft.seo_description} onChange={e=>setProductDraft(v=>({...v,seo_description:e.target.value}))} placeholder="A concise, factual product summary for search results" className={input+" mt-1.5"}/></label>
+       </div>
+      </div>
+      <div className="border-t border-slate-200 pt-4">
        <h4 className="font-bold">内部 SKD / CKD 价格</h4>
        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {([["skd_price_usd","SKD USD"],["skd_price_cny","SKD CNY"],["ckd_price_usd","CKD USD"],["ckd_price_cny","CKD CNY"],["packing_quantity_40hq","40HQ 装箱量"]] as const).map(([key,label])=><label key={key} className="text-sm font-semibold">{label}<input type="number" min="0" step={key==="packing_quantity_40hq"?"1":"0.01"} className={input+" mt-1.5"} value={productDraft[key]} onChange={e=>setProductDraft(v=>({...v,[key]:e.target.value}))}/></label>)}
@@ -792,7 +822,7 @@ function addQuoteLine(){
       <div className="flex flex-wrap items-center gap-4 border-t border-slate-200 pt-4">
        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={productDraft.featured} onChange={e=>setProductDraft(v=>({...v,featured:e.target.checked}))}/>首页推荐标记</label>
        <label className="flex items-center gap-2 text-sm">排序<input type="number" value={productDraft.sort_order} onChange={e=>setProductDraft(v=>({...v,sort_order:e.target.value}))} className="w-24 rounded border border-slate-300 px-2 py-1.5"/></label>
-       <span className="text-xs text-slate-500">新建产品默认为草稿，不自动发布到公开网站。</span>
+       <span className="text-xs text-slate-500">新建产品默认为草稿。保存产品资料不会自动发布；管理员在产品列表点击“发布到网站”后才会公开显示。内部 SKD/CKD 价格保存在独立权限表，不会显示在网站。</span>
        <div className="ml-auto flex gap-2"><button type="button" onClick={resetProductDraft} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm">清空</button><button disabled={busy} className={btn}>{busy?"正在保存…":productDraft.id?"保存产品修改":"保存产品草稿"}</button></div>
       </div>
      </form>}
@@ -811,7 +841,7 @@ function addQuoteLine(){
         <td className="px-3 py-3"><div className="flex items-center gap-3"><div className="h-12 w-14 overflow-hidden rounded bg-slate-100">{(p.hero_image||p.image)&&<img src={p.hero_image||p.image||""} alt="" className="h-full w-full object-cover"/>}</div><div><div className="font-bold">{p.name}</div><div className="text-xs text-slate-500">{p.model_code||p.slug}</div><div className="text-xs text-slate-400">{p.short_description||""}</div></div></div></td>
         <td className="px-3 py-3">{cats.find(x=>x.value===p.category)?.label||p.category}</td>
         <td className="px-3 py-3">{pr?.skd_price_usd==null?"—":cash(pr.skd_price_usd,"USD")}</td><td className="px-3 py-3">{pr?.skd_price_cny==null?"—":cash(pr.skd_price_cny,"CNY")}</td><td className="px-3 py-3">{pr?.ckd_price_usd==null?"—":cash(pr.ckd_price_usd,"USD")}</td><td className="px-3 py-3">{pr?.ckd_price_cny==null?"—":cash(pr.ckd_price_cny,"CNY")}</td><td className="px-3 py-3">{pr?.packing_quantity_40hq??"—"}</td><td className="px-3 py-3">{p.published?"已发布":"草稿"}</td>
-        <td className="px-3 py-3">{profile.role!=="sales"?<div className="flex gap-2"><button type="button" onClick={()=>beginEditProduct(p)} className="font-bold text-sky-700">编辑</button><button type="button" onClick={()=>void deleteProduct(p)} className="font-bold text-red-700">删除</button></div>:<span className="text-xs text-slate-400">只读</span>}</td>
+        <td className="px-3 py-3">{profile.role!=="sales"?<div className="flex flex-wrap gap-2"><button type="button" onClick={()=>beginEditProduct(p)} className="font-bold text-sky-700">编辑</button>{profile.role==="admin"&&<button type="button" disabled={busy} onClick={()=>void setProductWebsitePublication(p,!p.published)} className={p.published?"font-bold text-amber-700":"font-bold text-emerald-700"}>{p.published?"撤回网站":"发布到网站"}</button>}<button type="button" onClick={()=>void deleteProduct(p)} className="font-bold text-red-700">删除</button></div>:<span className="text-xs text-slate-400">只读</span>}</td>
        </tr>})}
        {!filteredProducts.length&&<tr><td colSpan={9} className="px-3 py-10 text-center text-slate-400">{busy?"正在加载…":"暂无产品记录。管理员可先建立工厂档案，随后录入产品。"}</td></tr>}
        </tbody>
