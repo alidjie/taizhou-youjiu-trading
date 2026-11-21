@@ -4,25 +4,27 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef } from "react";
 
 function canonicalPath(path: string) {
-  return path.replace(/^\\/(en|fr|de|es|ar|ru|pt)(?=\\/|$)/i, "") || "/";
+  return path.replace(/^\/(en|fr|de|es|ar|ru|pt)(?=\/|$)/i, "") || "/";
 }
 
 function isProductDetail(path: string) {
   const clean = canonicalPath(path);
-  return /^\\/products\\/[^/]+\\/[^/]+\\/?$/.test(clean) || /^\\/products\\/detail\\/[^/]+\\/?$/.test(clean);
+  return /^\/products\/[^/]+\/[^/]+\/?$/.test(clean) || /^\/products\/detail\/[^/]+\/?$/.test(clean);
 }
 
 function isInquiry(path: string) {
-  return /^\\/inquiry\\/?$/i.test(canonicalPath(path));
+  return /^\/inquiry\/?$/i.test(canonicalPath(path));
 }
 
 export default function VisitorTracker() {
   const pathname = usePathname();
+  const visitorIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!pathname || pathname.startsWith("/admin") || pathname.startsWith("/crm")) return;
 
-    if (!visitorIdRef.current) visitorIdRef.current = crypto.randomUUID();\n    const visitorId = visitorIdRef.current;
+    if (!visitorIdRef.current) visitorIdRef.current = crypto.randomUUID();
+    const visitorId = visitorIdRef.current;
     const productPage = isProductDetail(pathname);
     const inquiryPage = isInquiry(pathname);
     let activeSeconds = 0;
