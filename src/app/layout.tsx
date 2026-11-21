@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import VisitorTracker from "../components/VisitorTracker";
 import "./globals.css";
 
 const siteUrl = "https://www.almcp.com";
@@ -50,5 +51,5 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
       }
     ]
   };
-  return <html lang={locale} dir={direction}><body><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(websiteSchema).replace(/</g,"\\u003c")}}/>{children}</body></html>;
+  return <html lang={locale} dir={direction}><body><script type="application/ld+json" dangerouslySetInnerHTML={{__html:JSON.stringify(websiteSchema).replace(/</g,"\\u003c")}}/>{children}<VisitorTracker /></body></html>;
 }
