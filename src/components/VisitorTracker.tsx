@@ -1,34 +1,19 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
-
-const VISITOR_KEY = "youjiu-analytics-visitor";
+import { useEffect, useRef } from "react";
 
 function canonicalPath(path: string) {
-  return path.replace(/^\/(en|fr|de|es|ar|ru|pt)(?=\/|$)/i, "") || "/";
+  return path.replace(/^\\/(en|fr|de|es|ar|ru|pt)(?=\\/|$)/i, "") || "/";
 }
 
 function isProductDetail(path: string) {
   const clean = canonicalPath(path);
-  return /^\/products\/[^/]+\/[^/]+\/?$/.test(clean) || /^\/products\/detail\/[^/]+\/?$/.test(clean);
+  return /^\\/products\\/[^/]+\\/[^/]+\\/?$/.test(clean) || /^\\/products\\/detail\\/[^/]+\\/?$/.test(clean);
 }
 
 function isInquiry(path: string) {
-  return /^\/inquiry\/?$/i.test(canonicalPath(path));
-}
-
-function getVisitorId() {
-  try {
-    let id = sessionStorage.getItem(VISITOR_KEY);
-    if (!id) {
-      id = crypto.randomUUID();
-      sessionStorage.setItem(VISITOR_KEY, id);
-    }
-    return id;
-  } catch {
-    return crypto.randomUUID();
-  }
+  return /^\\/inquiry\\/?$/i.test(canonicalPath(path));
 }
 
 export default function VisitorTracker() {
@@ -37,7 +22,7 @@ export default function VisitorTracker() {
   useEffect(() => {
     if (!pathname || pathname.startsWith("/admin") || pathname.startsWith("/crm")) return;
 
-    const visitorId = getVisitorId();
+    if (!visitorIdRef.current) visitorIdRef.current = crypto.randomUUID();\n    const visitorId = visitorIdRef.current;
     const productPage = isProductDetail(pathname);
     const inquiryPage = isInquiry(pathname);
     let activeSeconds = 0;
