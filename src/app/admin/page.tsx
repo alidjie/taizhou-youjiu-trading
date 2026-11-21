@@ -4,6 +4,7 @@ import Link from "next/link";
 import BlogManager from "../../components/admin/BlogManager";
 import FAQManager from "../../components/admin/FAQManager";
 import ImageMigrationManager from "../../components/admin/ImageMigrationManager";
+import VisitorMonitor from "../../components/admin/VisitorMonitor";
 import { convertImageToWebP, formatImageCompression } from "../../lib/image-upload";
 import { useEffect, useMemo, useState } from "react";
 
@@ -217,7 +218,7 @@ export default function AdminDashboard() {
   const [sessionExpiresAt, setSessionExpiresAt] = useState(0);
   const [needsAdminClaim, setNeedsAdminClaim] = useState(false);
   const [bootstrapCode, setBootstrapCode] = useState("");
-  const [tab, setTab] = useState<"inquiries" | "products" | "content" | "blog" | "faqs" | "images">("products");
+  const [tab, setTab] = useState<"inquiries" | "products" | "content" | "blog" | "faqs" | "images" | "visitors">("products");
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [contentBlocks, setContentBlocks] = useState<ContentBlock[]>([]);
@@ -875,6 +876,7 @@ export default function AdminDashboard() {
           <button onClick={()=>setTab("faqs")} aria-current={tab==="faqs"?"page":undefined} className={`whitespace-nowrap px-4 sm:px-5 py-3 text-sm font-bold border-b-2 ${tab==="faqs"?"border-[#7ca51c] text-[#101923]":"border-transparent text-slate-500"}`}>FAQ 审核</button>
           <button onClick={()=>setTab("images")} aria-current={tab==="images"?"page":undefined} className="whitespace-nowrap px-4 sm:px-5 py-3 text-sm font-bold border-b-2">图片迁移</button>
           <button onClick={()=>setTab("inquiries")} aria-current={tab==="inquiries"?"page":undefined} className={`whitespace-nowrap px-4 sm:px-5 py-3 text-sm font-bold border-b-2 ${tab==="inquiries"?"border-[#7ca51c] text-[#101923]":"border-transparent text-slate-500"}`}>客户询盘</button>
+          <button onClick={()=>setTab("visitors")} aria-current={tab==="visitors"?"page":undefined} className={`whitespace-nowrap px-4 sm:px-5 py-3 text-sm font-bold border-b-2 ${tab==="visitors"?"border-[#7ca51c] text-[#101923]":"border-transparent text-slate-500"}`}>实时访客</button>
         </div>
       </nav>
 
@@ -942,6 +944,8 @@ export default function AdminDashboard() {
           {contentDraft ? <form onSubmit={saveContent} className="p-5 md:p-7"><div className="grid md:grid-cols-2 gap-4 mb-5"><label className="block text-xs font-bold">模块名称<input value={contentDraft.label} onChange={event=>setContentDraft(current=>current?({...current,label:event.target.value}):current)} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/></label><label className="block text-xs font-bold">页面<select value={contentDraft.page} onChange={event=>setContentDraft(current=>current?({...current,page:event.target.value}):current)} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal bg-white"><option value="home">首页</option><option value="about">About</option><option value="products">产品中心</option><option value="contact">Contact</option><option value="inquiry">询盘页</option><option value="global">全站</option></select></label></div><div className="space-y-4">{Object.entries(contentDraft.content).map(([key,value])=>key === "image_url" ? <div key={key} className="block text-xs font-bold">{contentFieldLabels[key] || key}<div className="grid md:grid-cols-[1fr_auto] gap-3 mt-2"><input value={value} onChange={event=>setContentDraft(current=>current?({...current,content:{...current.content,[key]:event.target.value}}):current)} className="w-full border border-slate-300 px-3 py-3 text-sm font-normal"/><label className="inline-flex items-center justify-center bg-[#101923] text-white px-4 py-3 text-xs font-bold cursor-pointer">{uploading?"正在上传...":"上传替换图片"}<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploading} onChange={event=>void uploadContentImage(event,key)} className="hidden"/></label></div>{value&&<img src={value} alt="营销页面图片预览" className="mt-3 max-h-56 w-full object-contain bg-slate-100 border border-slate-200"/>}</div> : <label key={key} className="block text-xs font-bold">{contentFieldLabels[key] || key}{["body","secondary_body","headline"].includes(key)?<textarea rows={key==="body"?5:3} value={value} onChange={event=>setContentDraft(current=>current?({...current,content:{...current.content,[key]:event.target.value}}):current)} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/>:<input value={value} onChange={event=>setContentDraft(current=>current?({...current,content:{...current.content,[key]:event.target.value}}):current)} className="w-full border border-slate-300 px-3 py-3 mt-2 text-sm font-normal"/>}</label>) }{!Object.keys(contentDraft.content).length&&<p className="text-sm text-slate-500">该模块暂无字段。请先添加字段或选择其他模块。</p>}</div><div className="mt-8 bg-[#101923] text-white p-7 md:p-9"><div className="text-[10px] tracking-[.2em] text-[#b8ed36] font-black">{contentDraft.content.eyebrow || "MARKETING EYEBROW"}</div><h3 className="text-3xl md:text-4xl font-black mt-4 whitespace-pre-line">{contentDraft.content.headline_before ? <>{contentDraft.content.headline_before}<br/><span className="text-[#b8ed36]">{contentDraft.content.headline_accent}</span><br/>{contentDraft.content.headline_after}</> : contentDraft.content.headline || "Your marketing headline preview"}</h3><p className="text-slate-300 text-sm leading-7 mt-5 whitespace-pre-line">{contentDraft.content.body || "The marketing copy preview will appear here."}</p>{contentDraft.content.primary_label && <span className="inline-block bg-[#b8ed36] text-[#101923] text-xs font-black px-4 py-3 mt-6">{contentDraft.content.primary_label}</span>}</div><div className="mt-7 border-t border-slate-200 pt-5 flex flex-wrap items-center justify-between gap-4"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={contentDraft.published} onChange={event=>setContentDraft(current=>current?({...current,published:event.target.checked}):current)}/>在网站展示此模块</label><button disabled={loading||uploading} className="btn-primary disabled:opacity-50">{loading?"保存中...":uploading?"图片上传中...":"保存文案"}</button></div></form>:<div className="p-10 text-sm text-slate-500">从左侧选择一个首页、About 或产品分类文案模块。</div>}
         </section>
       </div>}
+
+      {tab === "visitors" && <VisitorMonitor accessToken={accessToken}/>}
 
       {tab === "blog" && <BlogManager accessToken={accessToken}/>}
 
