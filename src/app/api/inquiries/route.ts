@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
       email,
       company: String(body.company || "").slice(0, 200),
       country: String(body.country || "Not specified").slice(0, 100),
-      phone: String(body.whatsapp || "").slice(0, 100),
+      whatsapp: String(body.whatsapp || "").slice(0, 100),
       product_category: String(body.product_category || "").slice(0, 80),
       product_name: String(body.product_name || "").slice(0, 200),
       quantity: String(body.quantity || "").slice(0, 100),
@@ -43,7 +43,6 @@ export async function POST(request: NextRequest) {
       method: "POST",
       headers: {
         apikey: key,
-        Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
         Prefer: "return=minimal"
       },
@@ -71,7 +70,7 @@ export async function POST(request: NextRequest) {
       `Email: ${email}`,
       `Company: ${enquiry.company || "Not provided"}`,
       `Country: ${enquiry.country}`,
-      `WhatsApp / Phone: ${enquiry.phone || "Not provided"}`,
+      `WhatsApp / Phone: ${enquiry.whatsapp || "Not provided"}`,
       `Product category: ${enquiry.product_category || "Not specified"}`,
       `Model / product: ${enquiry.product_name || "Not specified"}`,
       `Estimated quantity: ${enquiry.quantity || "Not specified"}`,
