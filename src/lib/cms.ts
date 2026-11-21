@@ -13,6 +13,14 @@ export type CmsBlock = {
   published: boolean;
 };
 
+export type CmsMarketingBlock = {
+  id: string;
+  type: "story" | "image_text" | "feature_grid" | "applications" | "comparison_table" | "faq" | "video" | "downloads" | "cta";
+  enabled?: boolean;
+  sort_order?: number;
+  content: Record<string, string>;
+};
+
 export type CmsProduct = {
   id: string;
   slug: string;
@@ -33,6 +41,7 @@ export type CmsProduct = {
   sort_order?: number;
   seo_title?: string | null;
   seo_description?: string | null;
+  marketing_blocks?: CmsMarketingBlock[] | null;
   created_at?: string | null;
   updated_at?: string | null;
 };
@@ -65,24 +74,24 @@ export async function getCmsBlock(key: string): Promise<CmsBlock | null> {
 
 export async function getPublishedProducts(category?: string): Promise<CmsProduct[]> {
   const query = new URLSearchParams({
-    select: "id,slug,name,model_code,category,image,hero_image,gallery,short_description,description,specs,features,specifications,certifications,featured,published,sort_order,seo_title,seo_description,created_at,updated_at",
+    select: "id,slug,name,model_code,category,image,hero_image,gallery,short_description,description,specs,features,specifications,certifications,featured,published,sort_order,seo_title,seo_description,created_at,updated_at,marketing_blocks",
     published: "eq.true",
     order: "sort_order.asc,created_at.desc",
   });
   if (category) query.set("category", `eq.${category}`);
-  const rows = await publicRest<CmsProduct[]>(`products?${query.toString()}`);
+  const rows = await publicRest<CmsProduct[]>(`website_products?${query.toString()}`);
   return rows ?? [];
 }
 
 export async function getPublishedProduct(category: string, slug: string): Promise<CmsProduct | null> {
   const query = new URLSearchParams({
-    select: "id,slug,name,model_code,category,image,hero_image,gallery,short_description,description,specs,features,specifications,certifications,featured,published,sort_order,seo_title,seo_description",
+    select: "id,slug,name,model_code,category,image,hero_image,gallery,short_description,description,specs,features,specifications,certifications,featured,published,sort_order,seo_title,seo_description,marketing_blocks",
     category: `eq.${category}`,
     slug: `eq.${slug}`,
     published: "eq.true",
     limit: "1",
   });
-  const rows = await publicRest<CmsProduct[]>(`products?${query.toString()}`);
+  const rows = await publicRest<CmsProduct[]>(`website_products?${query.toString()}`);
   return rows?.[0] ?? null;
 }
 
