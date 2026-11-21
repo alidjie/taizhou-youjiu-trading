@@ -9,15 +9,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, emailSent: false });
     }
 
-    const name = String(body.name || "").trim();
+    const isLeadCapture = body.lead_capture === true;
     const email = String(body.email || "").trim();
-    const message = String(body.message || "").trim();
+    const name = isLeadCapture ? "Website visitor" : String(body.name || "").trim();
+    const message = isLeadCapture
+      ? "INQUIRY PAGE ABANDONMENT LEAD: Visitor requested a follow-up but did not submit the full inquiry form.\n"
+      : String(body.message || "").trim();
 
     if (
-      name.length < 2 || name.length > 120 ||
       email.length < 5 || email.length > 254 ||
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
-      message.length < 5 || message.length > 5000
+      (!isLeadCapture && (name.length < 2 || name.length > 120 || message.length < 5 || message.length > 5000))
     ) {
       return NextResponse.json({ error: "Invalid enquiry details" }, { status: 400 });
     }
