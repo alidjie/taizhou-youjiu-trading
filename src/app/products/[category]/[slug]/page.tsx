@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Header from "../../../../components/Header";
 import Footer from "../../../../components/Footer";
+import ProductMarketingSections from "../../../../components/ProductMarketingSections";
 import { productCategories } from "../../../../data/company";
 import { getPublishedProduct } from "../../../../lib/cms";
 import { applyTranslation, getLocale } from "../../../../lib/i18n";
@@ -49,5 +50,6 @@ export default async function ProductDetailPage({ params }: PageProps) {
       {certifications.length > 0 && <div className="mt-8"><h3 className="font-black text-lg mb-3">Documents & certifications</h3><div className="flex flex-wrap gap-2">{certifications.map((cert,index)=><span key={index} className="text-xs border border-slate-300 px-3 py-2">{cert}</span>)}</div></div>}
       <div className="bg-[#101923] text-white p-7 mt-10"><div className="eyebrow !text-[#b8ed36] mb-3">OEM & WHOLESALE ENQUIRIES</div><h3 className="text-2xl font-black">Request a model-specific quotation</h3><p className="text-sm text-slate-300 leading-6 mt-3">Send your destination market, required configuration and estimated quantity. Our sales team will follow up with model availability and export details.</p><Link href={`/inquiry?category=${category}&product=${encodeURIComponent(product.name)}`} className="btn-primary mt-6">Request a Quote ↗</Link></div>
     </div></section>
+    <ProductMarketingSections blocks={product.marketing_blocks}/>
   </main><Footer/></>;
 }
