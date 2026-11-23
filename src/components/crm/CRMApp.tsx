@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ProductMarketingSections from "../ProductMarketingSections";
+import ProspectPool from "./ProspectPool";
 import type { CmsMarketingBlock } from "../../lib/cms";
 
 const API = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://fsqpeuulaglnnwfyxndj.supabase.co";
@@ -27,7 +28,7 @@ type Branding = { id:string; scope:"company"|"factory"; factory_id:string|null; 
 type Doc = { id:string; document_type:string; document_no:string; status:string; document_date:string; order_id:string; header_fields:Record<string,unknown>; terms_fields:Record<string,unknown>; shipping_fields:Record<string,unknown>; declaration_fields:Record<string,unknown>; buyer_snapshot:Record<string,unknown>; seller_snapshot:Record<string,unknown>; order_snapshot:Record<string,unknown>; branding_snapshot:Record<string,unknown> };
 type DocItem = { id:string; document_id:string; line_no:number; item_fields:Record<string,unknown> };
 type Perf = { sales_user_id:string; username:string; full_name:string; order_total_usd:number; order_total_cny:number; order_count:number; customer_count:number; won_customer_count:number; conversion_rate:number };
-type Module = "dashboard"|"customers"|"products"|"quotes"|"orders"|"documents"|"accounts"|"branding"|"password";
+type Module = "dashboard"|"customers"|"prospects"|"products"|"quotes"|"orders"|"documents"|"accounts"|"branding"|"password";
 const labels:Record<string,string> = { prospect:"潜在客户",following:"跟进中",won:"已成交",lost:"已流失",draft:"草稿",sent:"已发送",accepted:"已接受",rejected:"已拒绝",expired:"已过期",converted:"已转订单",quoted:"已报价",ordered:"已下单",production:"生产中",shipped:"已发货",completed:"已完成",cancelled:"已取消",final:"已确认" };
 const roleLabels:Record<Role,string> = {admin:"管理员",sales:"销售员",factory:"工厂用户"};
 const cats = [{value:"electric-motorcycles",label:"Electric Motorcycles"},{value:"electric-bicycles",label:"Electric Bicycles"},{value:"electric-motors",label:"Electric Motors"},{value:"suspension-systems",label:"Suspension Systems"}];
@@ -265,7 +266,7 @@ export default function CRMApp(){
    }catch(e){setError(e instanceof Error?e.message:"报价单品牌设置加载失败。");}
   },[profile,req]);
  const loadAccounts=useCallback(async()=>{try{const [rows,fs]=await Promise.all([req<Profile[]>("crm_user_profiles?select=user_id,username,email,full_name,role,factory_id,is_active,created_at&order=created_at.desc"),req<Factory[]>("crm_factories?select=id,factory_code,name,status&order=name")]);setAccounts(rows);setFactories(fs);}catch(e){setError(e instanceof Error?e.message:"账号加载失败。");}},[req]);
- useEffect(()=>{if(!profile)return;if(module==="dashboard")void loadDashboard();if(module==="customers"){void loadCustomers();if(profile.role==="admin")void loadAccounts();}if(module==="products")void loadProducts();if(module==="quotes"){void loadQuotes();void loadCustomers();void loadProducts();}if(module==="orders")void loadOrders();if(module==="documents"){void loadDocs();void loadOrders();}if(module==="accounts"&&profile.role==="admin")void loadAccounts();if(module==="branding")void loadBranding();},[module,profile,loadDashboard,loadCustomers,loadProducts,loadQuotes,loadOrders,loadDocs,loadAccounts,loadBranding]);
+ useEffect(()=>{if(!profile)return;if(module==="dashboard")void loadDashboard();if(module==="customers"||module==="prospects"){void loadCustomers();if(profile.role==="admin")void loadAccounts();}if(module==="products")void loadProducts();if(module==="quotes"){void loadQuotes();void loadCustomers();void loadProducts();}if(module==="orders")void loadOrders();if(module==="documents"){void loadDocs();void loadOrders();}if(module==="accounts"&&profile.role==="admin")void loadAccounts();if(module==="branding")void loadBranding();},[module,profile,loadDashboard,loadCustomers,loadProducts,loadQuotes,loadOrders,loadDocs,loadAccounts,loadBranding]);
 
  function beginEditCustomer(c:Customer){
   setCustomerEditDraft({company_name:c.company_name,contact_name:c.contact_name,email:c.email||"",phone:c.phone||"",whatsapp:c.whatsapp||"",website:c.website||"",address:c.address||"",country:c.country,city:c.city||"",notes:c.notes||"",tags:(c.tags||[]).join(", ")});
@@ -699,6 +700,7 @@ function addQuoteLine(){
  const menu:Array<{id:Module;label:string;icon:string;roles:Role[]}>=[
   {id:"dashboard",label:"销售看板",icon:"▦",roles:["admin","sales"]},
   {id:"customers",label:"客户与跟进",icon:"◎",roles:["admin","sales"]},
+  {id:"prospects",label:"AI 海外客户公海",icon:"⌕",roles:["admin","sales"]},
   {id:"products",label:"产品库",icon:"▣",roles:["admin","sales","factory"]},
   {id:"quotes",label:"报价单",icon:"▤",roles:["admin","sales"]},
   {id:"orders",label:"订单管理",icon:"▧",roles:["admin","sales"]},
@@ -749,6 +751,7 @@ function addQuoteLine(){
      <div className={panel}><div className="mb-4 flex items-center justify-between"><h3 className="font-bold">销售人员业绩对比</h3><span className="text-xs text-slate-400">USD / CNY 分开统计</span></div><div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="bg-slate-50 text-xs text-slate-500"><tr>{["业务员","订单 USD","订单 CNY","订单数","客户数","成交客户","转化率"].map(x=><th key={x} className="px-3 py-3">{x}</th>)}</tr></thead><tbody>{perf.map(p=><tr key={p.sales_user_id} className="border-t border-slate-100"><td className="px-3 py-3 font-semibold">{p.full_name} <span className="text-xs text-slate-400">({p.username})</span></td><td className="px-3 py-3">{cash(p.order_total_usd,"USD")}</td><td className="px-3 py-3">{cash(p.order_total_cny,"CNY")}</td><td className="px-3 py-3">{p.order_count}</td><td className="px-3 py-3">{p.customer_count}</td><td className="px-3 py-3">{p.won_customer_count}</td><td className="px-3 py-3 font-bold">{Number(p.conversion_rate).toFixed(2)}%</td></tr>)}{!perf.length&&<tr><td colSpan={7} className="px-3 py-10 text-center text-slate-400">暂无销售业绩数据</td></tr>}</tbody></table></div></div>
     </div>}
 
+    {module==="prospects"&&profile.role!=="factory"&&<ProspectPool token={token} userId={userId} role={profile.role} onOpenCustomer={async(id)=>{try{const existing=customers.find(c=>c.id===id);const customer=existing||await req<Customer>("crm_customers?select=*&id=eq."+encodeURIComponent(id)+"&limit=1").then(rows=>rows[0]);if(!customer)throw new Error("客户档案不存在或当前账号无权查看");setModule("customers");await openCustomer(customer);}catch(e){setError(e instanceof Error?e.message:"打开客户档案失败");}}}/>}
     {module==="customers"&&profile.role!=="factory"&&<div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-xl font-black">客户档案与跟进</h2><p className="mt-1 text-sm text-slate-500">维护客户资料、跟进时间线，并反查该客户关联的报价与订单。</p></div><button onClick={()=>{setCustomerOwnerId(userId);setCustomerOpen(!customerOpen);}} className={btn}>＋ 新建客户</button></div>
       {customerOpen&&<form onSubmit={saveCustomer} className={panel}><h3 className="mb-4 font-bold">新建客户档案</h3><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
