@@ -30,9 +30,8 @@ export default function ProspectPool({token,userId,role,onOpenCustomer}:Props){
  const [error,setError]=useState("");
  const [notice,setNotice]=useState("");
 
- const headers={apikey:KEY,Authorization:"Bearer "+token,"Content-Type":"application/json"};
  const request=useCallback(async<T,>(path:string,init?:RequestInit):Promise<T>=>{
-  const response=await fetch(API+"/rest/v1/"+path,{...init,headers:{...headers,...(init?.headers||{})}});
+  const response=await fetch(API+"/rest/v1/"+path,{...init,headers:{apikey:KEY,Authorization:"Bearer "+token,"Content-Type":"application/json",...((init?.headers||{}) as Record<string,string>)}});
   const body=await response.text();
   if(!response.ok)throw new Error(body||"CRM request failed");
   return body?JSON.parse(body) as T:undefined as T;
