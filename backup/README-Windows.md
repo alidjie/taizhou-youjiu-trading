@@ -23,7 +23,7 @@ Test `rclone lsd youjiu-s3:` and `rclone lsd youjiu-backup:`.
 ## 3. Save database password encrypted with Windows DPAPI
 Open PowerShell in `backup/windows` and run:
 `powershell -ExecutionPolicy Bypass -File .\backup-youjiu.ps1 -SetupSecrets`
-Enter the database password at the prompt. The encrypted secret is tied to this Windows user and computer. The script's connection values are preset for this project (host `db.fsqpeuulaglnnwfyxndj.supabase.co`, user `postgres.fsqpeuulaglnnwfyxndj`, database `postgres`, port `5432`). If direct connectivity is unavailable, use the project's pooler details and adjust settings; do not paste passwords into chat.
+Enter the database password at the prompt. The encrypted secret is tied to this Windows user and computer. The script's connection values are preset for this project (host `db.fsqpeuulaglnnwfyxndj.supabase.co`, user `postgres`, database `postgres`, port `5432`). If direct connectivity is unavailable, use the project's pooler details and adjust settings; do not paste passwords into chat.
 
 ## 4. Run manually first
 Run `powershell -ExecutionPolicy Bypass -File .\backup-youjiu.ps1`. Inspect `%USERPROFILE%\YOUJIU_BACKUP\runs\` for database.sql, storage folders and SHA256SUMS.txt, and check logs. Verify the run is copied to the offsite remote.
