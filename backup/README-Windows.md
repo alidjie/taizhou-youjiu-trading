@@ -1,6 +1,6 @@
 # YOUJIU Windows weekly backup (database + Storage + offsite)
 
-Backs up the Supabase PostgreSQL database and the three currently verified Storage buckets (`products`, `blog-images`, `crm-branding`) to the Windows PC and then copies the run to a separate offsite destination using rclone. Credentials are not stored in this repository.
+Backs up the Supabase PostgreSQL database and the three currently verified Storage buckets (`products`, `blog-images`, `crm-branding`) to the Windows PC and then copies the run to the S3 bucket `youjiu-backups` on a separate offsite destination using rclone. Credentials are not stored in this repository.
 
 ## Scope and limits
 - PostgreSQL logical dump with `pg_dump`.
